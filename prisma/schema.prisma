@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum Size {
+  sm
+  md
+  lg
+  xl
+  xxl
+  xxxl
+  xl4
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String   @unique
+  password  String?
+  role      Role     @default(user)
+  // carts Cart[]
+  // faviroutes Favourites[]
+  // reviews   Reviews[]
+  createdAt DateTime @default(now())
+}
+
+model Product {
+  id                  Int           @id @default(autoincrement())
+  product_name        String        @unique
+  product_description String
+  original_price      Int
+  discount_percentage Float?
+  discounted_price    Float?
+  images              String[]
+  quantity            Int
+  is_avilable         Boolean       @default(true)
+  sizes               ProductSize[] @relation("ProductToProductSize")
+  badge               String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+model ProductSize {
+  productId      Int
+  size           Size
+  stock_quantity Int
+  product        Product @relation("ProductToProductSize", fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, size])
+}
+
+model FAQ {
+  id       Int     @id @default(autoincrement())
+  question String
+  answer   String?
+}

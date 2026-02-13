@@ -1,0 +1,210 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import {  CanActivate,  ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common"
+import  { ConfigService } from "@nestjs/config"
+import  { JwtService } from "@nestjs/jwt"
+import  { Request, Response } from "express"
+import { getCookieConfig } from "../../../common/utils/cookie-config"
+
+@Injectable()
+export class ProtectLoginGuard implements CanActivate {
+  //Dependency Injection
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest<Request>()
+    const res = context.switchToHttp().getResponse<Response>()
+    const refresh_token = req.cookies["refresh_token"]
+    if (!refresh_token) {
+      throw new UnauthorizedException("Refresh Token is missing from the request!")
+    }
+    const payload = await this.jwtService.verify(refresh_token, {
+      secret: this.configService.get<string>("jwtRefreshSecret"),
+    })
+    if (!payload) {
+      throw new UnauthorizedException("The provided refresh-token was invalid!")
+    }
+    let access_token = req.cookies["access_token"]
+    if (!access_token) {
+      const { exp, iat, nbf, ...safePayload } = payload as any
+      access_token = this.jwtService.sign(safePayload, {
+        secret: this.configService.get<string>("jwtSecret"),
+        expiresIn:  process.env.expiresIn
+       
+      })
+      res.cookie("access_token", access_token, {
+        ...getCookieConfig(req, 15 * 60 * 1000),
+      })
+    } else {
+      const payload = await this.jwtService.verify(access_token, {
+        secret: this.configService.get<string>("jwtSecret"),
+      })
+      if (!payload) {
+        throw new UnauthorizedException("The provided access-token was invalid!")
+      }
+    }
+    //Request Variable If Valid
+    req["user"] = payload
+    return true
+  }
+}
+
+import { Request } from 'express';
+
+export interface CookieConfig {
+  httpOnly: boolean;
+  sameSite: 'none' | 'lax' | 'strict';
+  secure: boolean;
+  path: string;
+  maxAge?: number;
+  domain?: string;
+}
+
+export function getCookieConfig(req: Request, maxAge?: number): CookieConfig {
+  const host = req.get('host') || '';
+  const origin = req.get('origin') || '';
+  const forwarded = req.get('x-forwarded-proto') || '';
+
+  // Detect environment
+  const isLocalDevelopment = 
+    host.includes('localhost') ||
+    host.includes('127.0.0.1') ||
+    host.includes('100.28.126.205') ||
+    origin.includes('localhost') ||
+    origin.includes('100.28.126.205');
+
+  const isSecureConnection = 
+    forwarded === 'https' || 
+    req.protocol === 'https' ||
+    req.secure;
+
+  console.log('🔍 Cookie Debug:');
+  console.log('Host:', host);
+  console.log('Origin:', origin);
+  console.log('Protocol:', req.protocol);
+  console.log('X-Forwarded-Proto:', forwarded);
+  console.log('isLocalDevelopment:', isLocalDevelopment);
+  console.log('isSecureConnection:', isSecureConnection);
+
+  // LOCAL DEVELOPMENT (HTTP)
+  if (isLocalDevelopment && !isSecureConnection) {
+    return {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false,
+      path: '/',
+      ...(maxAge && { maxAge }),
+    };
+  }
+
+  // PRODUCTION OR SECURE CONNECTION
+  // Extract root domain from host (e.g., "api.hrnnepal.com" → ".hrnnepal.com")
+  const domain = host.split(':')[0]; // Remove port if present
+  const rootDomain = domain.split('.').slice(-2).join('.'); // Get last 2 parts
+
+  return {
+    httpOnly: true,
+    sameSite: 'none', // Required for cross-domain
+    secure: true,     // MUST be true when sameSite is 'none'
+    path: '/',
+    domain: .${rootDomain}, // Share cookies across subdomains
+    ...(maxAge && { maxAge }),
+  };
+}
+
+// Test configuration (local testing)
+export function getTestCookieConfig(maxAge?: number): CookieConfig {
+  return {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    path: '/',
+    ...(maxAge && { maxAge }),
+  };
+}
+
+// Emergency fallback
+export function getForcedCrossDomainConfig(maxAge?: number): CookieConfig {
+  console.log('🚨 USING FORCED CROSS-DOMAIN CONFIG');
+  return {
+    httpOnly: true,
+    sameSite: 'none',
+    secure: true, // MUST be true
+    path: '/',
+    ...(maxAge && { maxAge }),
+  };
+}
+
+
+async login(loginData: LoginUserDTO): Promise<LoginResponse> {
+    return await ErrorHandler.wrapAsync(async (): Promise<LoginResponse> => {
+      ErrorHandler.validateRequired(loginData.username, 'Username');
+      ErrorHandler.validateRequired(loginData.password, 'Password');
+
+      const userExists = await this.userModel.findOne({
+        username: loginData.username,
+        is_active: true,
+      });
+      if (!userExists) {
+        throw new UnauthorizedException("User wasn't found in the system!");
+      }
+
+
+      const isValid = await this.bcryptService.comparePassword(
+        loginData.password,
+        userExists.password,
+      );
+      if (!isValid) {
+        throw new UnauthorizedException(
+          'The password provided was incorrect!',
+        );
+      }
+
+      const access_token = this.jwtService.sign({
+        id: userExists._id.toString(),
+        username: userExists.username,
+        email: userExists.email,
+        role: userExists.role,
+        is_active: userExists.is_active,
+        is_approved: userExists.is_approved,
+      });
+
+      const refresh_token = this.jwtService.sign(
+        {
+          id: userExists._id.toString(),
+          username: userExists.username,
+          email: userExists.email,
+          role: userExists.role,
+          is_active: userExists.is_active,
+          is_approved: userExists.is_approved,
+        },
+        {
+          secret: this.configService.get<string>('jwtRefreshSecret') || 'fallback-secret',
+          expiresIn: '7d',
+        },
+      );
+
+      return {
+        message: 'Login successful',
+        userData: {
+          id: userExists._id.toString(),
+          username: userExists.username,
+          email: userExists.email,
+          role: userExists.role,
+          is_active: userExists.is_active,
+          is_approved: userExists.is_approved,
+        },
+        tokens: {
+          access_token,
+          refresh_token,
+        },
+      };
+    }, 'User login');
+  }
+
+
+  

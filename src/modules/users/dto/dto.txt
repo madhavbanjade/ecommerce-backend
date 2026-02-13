@@ -1,0 +1,81 @@
+import { Type } from "class-transformer";
+import { 
+  IsString, 
+  Matches, 
+  IsEnum, 
+  IsBoolean, 
+  IsNotEmpty, 
+  IsEmail, 
+  IsOptional, 
+  MinLength, 
+  MaxLength,
+} from "class-validator"
+
+export class CreateUserDTO {
+  @IsNotEmpty({ message: "Username is required" })
+  @IsString()
+  @MinLength(3, { message: "Username must be at least 3 characters long" })
+  @MaxLength(30, { message: "Username must not exceed 30 characters" })
+  @Matches(/^[a-zA-Z0-9_-]+$/, {
+    message: "Username can only contain letters, numbers, underscores, and hyphens",
+  })
+  username: string;
+
+  @IsNotEmpty({ message: "Email is required" })
+  @IsEmail({}, { message: "Please provide a valid email address" })
+  @Matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, {
+    message: "Please provide a valid email address",
+  })
+  email: string;
+
+  @IsNotEmpty({ message: "Password is required" })
+  @IsString()
+  @Matches(/^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%?&]{8,}$/, {
+    message: "Password must contain at least 8 characters, one uppercase, one lowercase, one number, and one special character (@$!%*?&)",
+  })
+  password: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @IsEnum(["admin"a, "company", "operator", "institute", "teacher", "student","frontdesk"], {
+    message: "Please provide a valid role for the user.",
+  })
+  role: string;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  is_active?: boolean;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  is_approved?: boolean;
+}
+
+
+// src/modules/class/dto/update-class.dto.ts
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateClassDto } from './create-class.dto';
+
+export class UpdateClassDto extends PartialType(CreateClassDto) {}
+
+async create(sidebarData: CreateSidebarDto) {
+  return ErrorHandler.wrapAsync(async () => {
+    if (sidebarData.parentId) {
+      const parentExists = await this.sidebarModel.findById(
+        sidebarData.parentId,
+      );
+      if (!parentExists) {
+        ErrorHandler.notFound('Parent sidebar');
+      }
+
+      await this.sidebarModel.findByIdAndUpdate(sidebarData.parentId, {
+        hasChildren: true,
+      });
+    }
+
+    const created = await this.sidebarModel.create(sidebarData);
+    return SuccessResponseHandler.created('Sidebar', created);
+  }, 'Create Sidebar');
+}

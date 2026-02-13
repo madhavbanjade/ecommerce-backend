@@ -1,0 +1,535 @@
+import {
+  HttpException,
+  BadRequestException,
+  UnauthorizedException,
+  ForbiddenException,
+  NotFoundException,
+  ConflictException,
+  InternalServerErrorException,
+  ServiceUnavailableException,
+  Injectable,
+} from '@nestjs/common';
+
+interface ValidationErrorDetail {
+  message: string;
+  path?: string;
+  type?: string;
+}
+
+interface ValidationError {
+  name: string;
+  details?: ValidationErrorDetail[];
+  errors?: Record<string, { message: string }>;
+}
+
+interface MongoError {
+  name: string;
+  code?: number;
+  keyValue?: Record<string, any>;
+}
+
+interface CastError {
+  name: string;
+  kind?: string;
+  value?: any;
+  path?: string;
+}
+
+interface DuplicateKeyError {
+  code: number;
+  keyValue?: Record<string, any>;
+  keyPattern?: Record<string, any>;
+}
+
+@Injectable()
+export class ErrorHandler {
+  /**
+   * Generic error handler - handles any error and throws appropriate HttpException
+   */
+  static handle(error: unknown, context?: string): never {
+    if (error instanceof HttpException) {
+      throw error;
+    }
+
+    console.error([${context || 'Unknown'}] Error:, error);
+
+    // Type guard to check if error has name property
+    const hasName = (err: unknown): err is { name: string } => {
+      return typeof err === 'object' && err !== null && 'name' in err;
+    };
+
+    // Type guard for ValidationError
+    const isValidationError = (err: unknown): err is ValidationError => {
+      return hasName(err) && err.name === 'ValidationError';
+    };
+
+    // Type guard for MongoErroruserser
+
+    const isMongoError = (err: unknown): err is MongoError => {
+      return hasName(err) && (err.name === 'MongoServerError' || err.name === 'MongoError');
+    };
+
+    // Type guard for CastError
+    const isCastError = (err: unknown): err is CastError => {
+      return hasName(err) && err.name === 'CastError';
+    };
+
+    // Type guard for DuplicateKeyError (MongoDB duplicate key error)
+    const isDuplicateKeyError = (err: unknown): err is DuplicateKeyError => {
+      return typeof err === 'object' && 
+             err !== null && 
+             'code' in err && 
+             (err as { code: unknown }).code === 11000;
+    };
+
+    if (isValidationError(error)) {
+      throw new BadRequestException(this.formatValidationError(error));
+    }
+
+    if (isMongoError(error)) {
+      throw new ServiceUnavailableException('Database operation failed');
+    }
+
+    if (isCastError(error)) {
+      throw new BadRequestException('Invalid ID format provided');
+    }
+
+    if (isDuplicateKeyError(error)) {
+      throw new ConflictException(this.formatDuplicateKeyError(error));
+    }
+
+    throw new InternalServerErrorException(
+      context ? ${context}: Operation failed : 'Operation failed'
+    );
+  }
+
+  /**
+   * Generic validation errors
+   */
+  static badRequest(message: string): never {
+    throw new BadRequestException(message);
+  }
+
+  static required(field: string): never {
+    throw new BadRequestException(${field} is required);
+  }
+
+  static invalid(field: string, reason?: string): never {
+    const message = reason 
+      ? Invalid ${field}: ${reason}
+      : Invalid ${field} provided;
+    throw new BadRequestException(message);
+  }
+
+  static invalidFormat(field: string): never {
+    throw new BadRequestException(${field} format is invalid);
+  }
+
+  /**
+   * Generic resource errors
+   */
+  static notFound(resource: string = 'Resource'): never {
+    throw new NotFoundException(${resource} not found);
+  }
+
+  static alreadyExists(resource: string): never {
+    throw new ConflictException(${resource} already exists);
+  }
+
+  /**
+   * Generic authentication/authorization errors
+   */
+  static unauthorized(message: string = 'Access denied'): never {
+    throw new UnauthorizedException(message);
+  }
+
+  static forbidden(message: string = 'Access forbidden'): never {
+    throw new ForbiddenException(message);
+  }
+
+  static insufficientPermissions(action?: string): never {
+    const message = action 
+      ? Insufficient permissions to ${action}
+      : 'Insufficient permissions';
+    throw new ForbiddenException(message);
+  }
+
+  /**
+   * Generic conflict errors
+   */
+  static cannotModifySelf(action: string = 'perform this action'): never {
+    throw new ForbiddenException(You cannot ${action} on your own account);
+  }
+
+  static operationNotAllowed(reason: string): never {
+    throw new BadRequestException(Operation not allowed: ${reason});
+  }
+
+  /** 
+   * Generic service errors
+   */
+  static serviceUnavailable(service: string = 'Service'): never {
+    throw new ServiceUnavailableException(${service} is currently unavailable);
+  }
+
+  static operationFailed(operation: string): never {
+    throw new ServiceUnavailableException(${operation} failed);
+  }
+
+  /**
+   * Async error wrapper
+   */
+  static async wrapAsync<T>(
+    operation: () => Promise<T>,
+    context: string
+  ): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      this.handle(error, context);
+    }
+  }
+
+  /**
+   * Validation helpers
+   */
+  static validateRequired(value: any, fieldName: string): void {
+    if (!value || (typeof value === 'string' && !value.trim())) {
+      this.required(fieldName);
+    }
+  }
+
+  static validateEmail(email: string): void {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      this.invalid('email', 'must be a valid email address');
+    }
+  }
+
+  static validateObjectId(id: string, fieldName: string = 'ID'): void {
+    if (!id || id.length !== 24 || !/^[0-9a-fA-F]{24}$/.test(id)) {
+      this.invalidFormat(fieldName);
+    }
+  }
+
+  static validateLength(value: string, min: number, max: number, fieldName: string): void {
+    if (value.length < min || value.length > max) {
+      this.invalid(fieldName, must be between ${min} and ${max} characters);
+    }
+  }
+
+  static validateArray(arr: any[], fieldName: string): void {
+    if (!Array.isArray(arr) || arr.length === 0) {
+      this.invalid(fieldName, 'must be a non-empty array');
+    }
+  }
+
+  static validateEnum(value: string, allowedValues: string[], fieldName: string): void {
+    if (!allowedValues.includes(value)) {
+      this.invalid(fieldName, must be one of: ${allowedValues.join(', ')});
+    }
+  }
+
+  static validatePassword(password: string): void {
+    if (password.length < 8) {
+      this.invalid('password', 'must be at least 8 characters long');
+    }
+    
+    if (!/(?=.[a-z])(?=.[A-Z])(?=.*\d)/.test(password)) {
+      this.invalid('password', 'must contain at least one uppercase letter, one lowercase letter, and one number');
+    }
+  }
+
+  /**
+   * Helper methods with proper typing
+   */
+  private static formatValidationError(error: ValidationError): string {
+    if (error.details && Array.isArray(error.details) && error.details.length > 0) {
+      const messages = error.details.map((detail: ValidationErrorDetail) => detail.message);
+      return messages.join(', ');
+    }
+    
+    if (error.errors && typeof error.errors === 'object') {
+      const messages = Object.values(error.errors).map((err: { message: string }) => err.message);
+      return messages.join(', ');
+    }
+    
+    return 'Validation failed';
+  }
+
+  private static formatDuplicateKeyError(error: DuplicateKeyError): string {
+    if (error.keyValue && typeof error.keyValue === 'object') {
+      const field = Object.keys(error.keyValue)[0];
+      return field ? ${field} already exists : 'Duplicate entry detected';
+    }
+    return 'Duplicate entry detected';
+  }
+}
+
+
+[2:50 PM, 1/14/2026] +977 986-8241777: import { FlattenMaps, Types } from "mongoose";
+
+
+
+
+//success ko 
+import { FlattenMaps, Types } from "mongoose";
+
+
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data?: T;
+  meta?: {
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+  };
+}
+
+export class SuccessResponseHandler {
+  static fetched(arg0: string, arg1: { exam: FlattenMaps<{ exam_name: string; exam_session: string; exam_date: Date; class_type: "interview_waiting" | "coe_appointed"; status: string; created_by: string; updated_by: string; }> & { _id: Types.ObjectId; } & { __v: number; }; students: never[]; student_count: number; }): any {
+    throw new Error('Method not implemented.');
+  }
+  /** Generic base response */
+  static success<T>(message: string, data?: T, meta?: any): ApiResponse<T> {
+    return {
+      success: true,A
+      message,
+      ...(data !== undefined && { data }),
+      ...(meta && { meta }),
+    };
+  }
+
+  /** CRUD responses - FULLY GENERIC */
+  static created<T>(resource: string, data?: T): ApiResponse<T> {
+    return this.success(${resource} created successfully, data);
+  }
+
+  static updated<T>(resource: string, data?: T): ApiResponse<T> {
+    return this.success(${resource} updated successfully, data);
+  }
+
+  static deleted<T>(resource: string, data?: T): ApiResponse<T> {
+    return this.success(${resource} deleted successfully, data);
+  }
+
+  static retrieved<T>(resource: string, data: T): ApiResponse<T> {
+    return this.success(${resource} retrieved successfully, data);
+  }
+
+  // ✅ FIXED: Corrected signature - simple and clean
+  static listed<T>(
+    resource: string,
+    data: T[],
+    total?: number
+  ): ApiResponse<T[]> {
+    return this.success(${resource} retrieved successfully, data, {
+      total: total ?? data.length,
+    });
+  }
+
+  static paginated<T>(
+    resource: string,
+    data: T[],
+    total: number,
+    page: number,
+    limit: number
+  ): ApiResponse<T[]> {
+    return this.success(${resource} retrieved successfully, data, {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
+  }
+
+  static operationSuccess<T>(
+    operation: string,
+    resource?: string,
+    data?: T
+  ): ApiResponse<T> {
+    const message = resource
+      ? ${resource} ${operation} successfully
+      : ${operation} completed successfully;
+
+    return this.success(message, data);
+  }
+}
+
+
+
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common"
+
+@Injectable()
+export class RoleProtectGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const req = context.switchToHttp().getRequest<Request>()
+    const userData = req["user"]
+    
+    if (!userData) {
+      throw new UnauthorizedException("The user data is missing!")
+    }
+     
+    const isValidRole = userData.role === "admin" 
+    
+    if (!isValidRole) {
+      throw new UnauthorizedException("This route is protected for admin  only!")
+    }
+    
+    return true
+  }
+}
+
+
+
+import { Request } from 'express';
+
+export interface CookieConfig {
+  httpOnly: boolean;
+  sameSite: 'none' | 'lax' | 'strict';
+  secure: boolean;
+  path: string;
+  maxAge?: number;
+  domain?: string;
+}
+
+export function getCookieConfig(req: Request, maxAge?: number): CookieConfig {
+  const host = req.get('host') || '';
+  const origin = req.get('origin') || '';
+  const forwarded = req.get('x-forwarded-proto') || '';
+
+  // Detect environment
+  const isLocalDevelopment = 
+    host.includes('localhost') ||
+    host.includes('127.0.0.1') ||
+    host.includes('100.28.126.205') ||
+    origin.includes('localhost') ||
+    origin.includes('100.28.126.205');
+
+  const isSecureConnection = 
+    forwarded === 'https' || 
+    req.protocol === 'https' ||
+    req.secure;
+
+  console.log('🔍 Cookie Debug:');
+  console.log('Host:', host);
+  console.log('Origin:', origin);
+  console.log('Protocol:', req.protocol);
+  console.log('X-Forwarded-Proto:', forwarded);
+  console.log('isLocalDevelopment:', isLocalDevelopment);
+  console.log('isSecureConnection:', isSecureConnection);
+
+  // LOCAL DEVELOPMENT (HTTP)
+  if (isLocalDevelopment && !isSecureConnection) {
+    return {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false,
+      path: '/',
+      ...(maxAge && { maxAge }),
+    };
+  }
+
+  // PRODUCTION OR SECURE CONNECTION
+  // Extract root domain from host (e.g., "api.hrnnepal.com" → ".hrnnepal.com")
+  const domain = host.split(':')[0]; // Remove port if present
+  const rootDomain = domain.split('.').slice(-2).join('.'); // Get last 2 parts
+
+  return {
+    httpOnly: true,
+    sameSite: 'none', // Required for cross-domain
+    secure: true,     // MUST be true when sameSite is 'none'
+    path: '/',
+    domain: `.${rootDomain}`, // Share cookies across subdomains
+    ...(maxAge && { maxAge }),
+  };
+}
+
+// Test configuration (local testing)
+export function getTestCookieConfig(maxAge?: number): CookieConfig {
+  return {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    path: '/',
+    ...(maxAge && { maxAge }),
+  };
+}
+
+// Emergency fallback
+export function getForcedCrossDomainConfig(maxAge?: number): CookieConfig {
+  console.log('🚨 USING FORCED CROSS-DOMAIN CONFIG');
+  return {
+    httpOnly: true,
+    sameSite: 'none',
+    secure: true, // MUST be true
+    path: '/',
+    ...(maxAge && { maxAge }),
+  };
+}
+
+import { Request, Response } from 'express';
+import { CookieOptions } from 'express';
+
+/* =======================
+   Cookie options helpers
+   ======================= */
+
+const getBaseCookieOptions = (req: Request): CookieOptions => {
+  const isSecure =
+    req.secure || req.get('x-forwarded-proto') === 'https';
+
+  return {
+    httpOnly: true,
+    secure: isSecure,
+    sameSite: 'lax',
+    path: '/',
+  };
+};
+
+export const getAccessTokenCookieOptions = (
+  req: Request,
+): CookieOptions => ({
+  ...getBaseCookieOptions(req),
+  maxAge: 15 * 60 * 1000, // 15 min
+});
+
+export const getRefreshTokenCookieOptions = (
+  req: Request,
+): CookieOptions => ({
+  ...getBaseCookieOptions(req),
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+});
+
+/* =======================
+   Cookie setters / clear
+   ======================= */
+
+export const setAuthCookies = (
+  req: Request,
+  res: Response,
+  accessToken: string,
+  refreshToken: string,
+) => {
+  res.cookie(
+    'access_token',
+    accessToken,
+    getAccessTokenCookieOptions(req),
+  );
+
+  res.cookie(
+    'refresh_token',
+    refreshToken,
+    getRefreshTokenCookieOptions(req),
+  );
+};
+
+export const clearAuthCookies = (res: Response) => {
+  res.clearCookie('access_token');
+  res.clearCookie('refresh_token');
+};
