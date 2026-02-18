@@ -29,26 +29,26 @@ const ARCHIVE_EXT = ['.zip', '.rar', '.7z', '.tar', '.gz'];
 
 export const ALL_EXT = [
   ...IMAGE_EXT,
-  ...DOC_EXT,
-  ...VIDEO_EXT,
-  ...AUDIO_EXT,
-  ...ARCHIVE_EXT,
+  // ...DOC_EXT,
+  // ...VIDEO_EXT,
+  // ...AUDIO_EXT,
+  // ...ARCHIVE_EXT,
 ];
 
 const MAX_FILE_SIZE = {
   image: 5 * 1024 * 1024, //5mb
-  document: 10 * 1024 * 1024, //10mb
-  video: 100 * 1024 * 1024, //100mb
-  audio: 20 * 1024 * 1024, //20mb
-  archive: 200 * 1024 * 1024, //200mb
+  // document: 10 * 1024 * 1024, //10mb
+  // video: 100 * 1024 * 1024, //100mb
+  // audio: 20 * 1024 * 1024, //20mb
+  // archive: 200 * 1024 * 1024, //200mb
 };
 
 export const getFileCategory = (ext: string) => {
   if (IMAGE_EXT.includes(ext)) return 'image';
-  if (DOC_EXT.includes(ext)) return 'document';
-  if (VIDEO_EXT.includes(ext)) return 'video';
-  if (AUDIO_EXT.includes(ext)) return 'audio';
-  if (ARCHIVE_EXT.includes(ext)) return 'archive';
+  // if (DOC_EXT.includes(ext)) return 'document';
+  // if (VIDEO_EXT.includes(ext)) return 'video';
+  // if (AUDIO_EXT.includes(ext)) return 'audio';
+  // if (ARCHIVE_EXT.includes(ext)) return 'archive';
   return null;
 };
 

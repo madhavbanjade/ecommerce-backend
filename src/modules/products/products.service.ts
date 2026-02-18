@@ -172,13 +172,22 @@ export class ProductsService {
       if (removeImages?.length) {
         finalImages = finalImages.filter((img) => !removeImages.includes(img));
       }
-      //add new images
-      if (files?.length) {
-        const newImagesPath = files.map(
-          (file) => `/uploads/image/${file.filename}`,
-        );
-        finalImages.push(...newImagesPath);
-      }
+
+    // Maximum allowed images
+
+    const MAX_IMAGES = 4;
+
+// Check if adding these files would exceed the limit
+if (files?.length && finalImages.length + files.length <= MAX_IMAGES) {
+  const newImagesPath = files.map(
+    (file) => `/uploads/image/${file.filename}`
+  );
+  finalImages.push(...newImagesPath);
+} else {
+  console.log("Cannot add more images. Maximum of 4 reached.");
+  // Or return an error to the client, e.g.:
+  // res.status(400).json({ message: "Maximum 4 images allowed." });
+}
 
       const product = await this.prisma.product.update({
         where: { id },
