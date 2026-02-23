@@ -18,7 +18,7 @@ export class CreateUserDto {
     message:
       'userName can only contain letters, numbers, underscores, and hyphens',
   })
-  name: string;
+  username: string;
 
   @IsNotEmpty({ message: 'Email is required' })
   @IsEmail({}, { message: 'Please Provide a valid email address' })

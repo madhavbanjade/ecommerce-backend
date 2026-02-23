@@ -22,15 +22,16 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           email: googleUser.email,
-          name: googleUser.name,
+          username: googleUser.username,
         },
       });
     }
 
-    const payload = { sub: user.id, email: user.email };
+     const payload = { sub: user.id, email: user.email };
+     const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
-    return {
-      accessToken: this.jwtService.sign(payload),
-    };
+
+    return {user, accessToken, refreshToken };
   }
 }

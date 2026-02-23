@@ -6,7 +6,7 @@ export class LoginUserDto {
   @Matches(/^[a-zA-Z0-9_-]+$/, {
     message: 'Please Provide a valid UserName',
   })
-  name: string;
+  username: string;
 
   @IsNotEmpty()
   @IsString()

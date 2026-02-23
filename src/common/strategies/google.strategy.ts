@@ -15,6 +15,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: config.get<string>('GOOGLE_CLIENT_SECRET')!,
       callbackURL: config.get<string>('GOOGLE_CALLBACK_URL')!,
       scope: ['email', 'profile'],
+      
     };
     console.log('GOOGLE STRATEGY INIT', options.clientID);
     console.log('GOOGLE STRATEGY INIT', options.callbackURL);
@@ -24,16 +25,28 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     super(options);
   }
 
-  async validate(accessToken: string, refreshToken: string, profile: Profile) {
-    const email = profile.emails?.[0]?.value;
-    if (!email) throw new Error('Google account has no email');
-
-    const user = await this.authService.googleLogin({
-      email,
-      name: profile.displayName,
-    });
-
-    return user; // attaches to req.user
+    authorizationParams(): Record<string, string> {
+    return {
+      prompt: 'select_account',
+    };
   }
+
+ async validate(
+  accessToken: string,
+  refreshToken: string,
+  profile: Profile,
+) {
+  const email = profile.emails?.[0]?.value;
+
+  if (!email) {
+    throw new Error('Google account has no email');
+  }
+
+  return {
+    email,
+    username: email.split('@')[0],
+  };
+}
+
 }
 console.log('🔥 GoogleStrategy initialized');

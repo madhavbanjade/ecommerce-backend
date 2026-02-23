@@ -1,24 +1,27 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import type { Response } from 'express';
 import { AuthService } from './auth.service.js';
+import { setAuthCookies } from '../../common/cookies/auth-cookie.js';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  // STEP 1: Redirect to Google
+  @UseGuards(AuthGuard('google'))
   @Get('google/login')
-  @UseGuards(AuthGuard('google'))
-  async googleAuth() {}
+  googleLogin() {}
 
-  // STEP 2: Google callback
+  @UseGuards(AuthGuard('google'))
   @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  async googleCallback(@Req() req, @Res() res: Response) {
-    // const result = await this.authService.googleLogin(req.user);
+  async googleCallback(@Req() req, @Res({ passthrough: true }) res) {
+    if (!req.user) return res.status(401).send('Unauthorized');
+    const { accessToken, refreshToken } = await this.authService.googleLogin(
+      req.user,
+    );
 
-    return res.redirect(`http://localhost:3000`); // frontend URL
+    // ✅ Set cookies
+    setAuthCookies(req, res, accessToken, refreshToken);
+
+    return res.redirect('http://localhost:3000');
   }
 }
-

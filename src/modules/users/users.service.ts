@@ -33,12 +33,12 @@ export class UsersService {
     @Body() createUserDto: CreateUserDto,
   ): Promise<ApiResponse<User>> {
     return ErrorHandler.execute(async () => {
-      const { name, email, role } = createUserDto;
+      const { username, email, role } = createUserDto;
       const hashedPassword = await this.bcryptService.hashPassword(
         createUserDto.password,
       );
       const created = await this.prisma.user.create({
-        data: { name, email, password: hashedPassword, role },
+        data: { username, email, password: hashedPassword, role },
       });
       // console.log('user', created);
       return SuccessResponseHandler.created('User', created);
@@ -54,11 +54,11 @@ export class UsersService {
     }>
   > {
     return ErrorHandler.execute(async () => {
-      const { name, password } = loginUserDto;
+      const { username, password } = loginUserDto;
 
       // 1️⃣ Find user by email
       const user = await this.prisma.user.findUnique({
-        where: { name },
+        where: { username },
       });
       //Error, resource
       if (!user || !user.password) throw ErrorHandler.notFound('User'); //!!!
@@ -73,7 +73,7 @@ export class UsersService {
       // 3️⃣ Prepare JWT payload
       const payload: JwtPayload = {
         sub: user.id,
-        name: user.name,
+        name: user.username || '' ,
         email: user.email,
         role: user.role,
       };
@@ -103,7 +103,7 @@ export class UsersService {
       // 6️⃣ Return safe response (never return password)
       return SuccessResponseHandler.login('User', {
         id: user.id,
-        name: user.name,
+        username: user.username,
         email: user.email,
         access_token,
         refresh_token,
@@ -115,7 +115,7 @@ export class UsersService {
     const RetrivedMany = await this.prisma.user.findMany({
       select: {
         id: true,
-        name: true,
+        username: true,
         email: true,
         role: true,
       },
@@ -130,7 +130,7 @@ export class UsersService {
       },
       select: {
         id: true,
-        name: true,
+        username: true,
         email: true,
         role: true,
       },
