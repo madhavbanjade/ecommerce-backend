@@ -99,11 +99,12 @@ export class ProductsService {
 
   async findAll(req: Request): Promise<ApiResponse<Product[]>> {
     return ErrorHandler.execute(async () => {
-     
-const tag = req.query.tag as string;
+   const tag = req.query.tag as string;  
+const category = req.query.category as string;
  const whereCondition = {
   ...(tag === "new" && { isNew: true }),
   ...(tag === "on-sale" && { isOnSale: true }),
+  ...(category && { category: category }),
 };
       const retrivedProducts = await this.prisma.product.findMany({
         where: whereCondition,
