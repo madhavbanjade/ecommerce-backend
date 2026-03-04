@@ -52,7 +52,7 @@ export class ProductsService {
     req: Request,
   ): Promise<ApiResponse<Product>> {
     return ErrorHandler.execute(async () => {
-      const { sizes, discount_percentage, original_price, category,  ...rest } =
+      const { sizes, discount_percentage, original_price, category, ...rest } =
         createProductDto;
 
       //for quantity
@@ -66,7 +66,6 @@ export class ProductsService {
 
       //for files
       const imagePaths = files.map((file) => `/uploads/image/${file.filename}`);
-
 
       const createProduct = await this.prisma.product.create({
         data: {
@@ -99,22 +98,19 @@ export class ProductsService {
 
   async findAll(req: Request): Promise<ApiResponse<Product[]>> {
     return ErrorHandler.execute(async () => {
-   const tag = req.query.tag as string;  
-const category = req.query.category as string;
- const whereCondition = {
-  ...(tag === "new" && { isNew: true }),
-  ...(tag === "on-sale" && { isOnSale: true }),
-  ...(category && { category: category }),
-};
+      const tag = req.query.tag as string;
+      console.log('tag', tag);
+      const category = req.query.category as string;
+      const filters: any = {};
+      if (category) filters.category = category;
+      if (tag) filters.tag = tag;
       const retrivedProducts = await this.prisma.product.findMany({
-        where: whereCondition,
+        where: filters,
         include: {
           // this is imp for nested dto to what to show and what not to show
           sizes: true,
         },
       });
-
-      
 
       if (retrivedProducts.length === 0)
         throw ErrorHandler.notFound('Products');

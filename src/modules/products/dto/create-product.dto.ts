@@ -54,13 +54,7 @@ export class CreateProductDto {
   @MaxLength(40, { message: 'Category not exceed 30 characters' })
   category: string;
 
-  @IsBoolean()
-  @IsOptional()
-  isOnSale: boolean;
 
-  @IsBoolean()
-  @IsOptional()
-  isNew: boolean;
 
   @IsArray()
   @IsString()

@@ -50,8 +50,6 @@ model Product {
   quantity            Int
   is_avilable         Boolean       @default(true)
   tag               String?
-  isNew               Boolean       @default(false)
-  isOnSale            Boolean       @default(false)
   sizes               ProductSize[] @relation("ProductToProductSize")
   category            String
   createdAt           DateTime      @default(now())
