@@ -67,7 +67,6 @@ export class ProductsService {
       //for files
       const imagePaths = files.map((file) => `/uploads/image/${file.filename}`);
 
-      const tag = req.body.tag as string;
 
       const createProduct = await this.prisma.product.create({
         data: {
@@ -78,8 +77,6 @@ export class ProductsService {
           discounted_price,
           quantity,
           category,
-          isNew: tag === "new",
-          isOnSale: tag === "on-sale",
           is_avilable: quantity > 0,
           sizes: {
             create: sizes.map((s) => ({
@@ -103,8 +100,13 @@ export class ProductsService {
   async findAll(req: Request): Promise<ApiResponse<Product[]>> {
     return ErrorHandler.execute(async () => {
      
-
+const tag = req.query.tag as string;
+ const whereCondition = {
+  ...(tag === "new" && { isNew: true }),
+  ...(tag === "on-sale" && { isOnSale: true }),
+};
       const retrivedProducts = await this.prisma.product.findMany({
+        where: whereCondition,
         include: {
           // this is imp for nested dto to what to show and what not to show
           sizes: true,
