@@ -30,7 +30,7 @@ enum Size {
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
-  username      String?   @unique
+  username  String?  @unique
   password  String?
   role      Role     @default(user)
   // carts Cart[]
@@ -49,8 +49,11 @@ model Product {
   images              String[]
   quantity            Int
   is_avilable         Boolean       @default(true)
+  tag               String?
+  isNew               Boolean       @default(false)
+  isOnSale            Boolean       @default(false)
   sizes               ProductSize[] @relation("ProductToProductSize")
-  badge               String?
+  category            String
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 }

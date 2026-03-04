@@ -2,6 +2,7 @@ import { Size } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsEnum,
   IsInt,
   IsNumber,
@@ -25,7 +26,6 @@ export class CreateSizeDto {
   @Type(() => Number)
   stock_quantity: number;
 }
-
 export class CreateProductDto {
   @IsString()
   @MinLength(3, { message: 'Product Name must be at least 3 characters long' })
@@ -49,6 +49,19 @@ export class CreateProductDto {
   @Type(() => Number)
   discount_percentage?: number;
 
+  @IsString()
+  @MinLength(3, { message: 'Category must be at least 3 characters long' })
+  @MaxLength(40, { message: 'Category not exceed 30 characters' })
+  category: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isOnSale: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isNew: boolean;
+
   @IsArray()
   @IsString()
   @IsOptional()
@@ -63,5 +76,6 @@ export class CreateProductDto {
   sizes: CreateSizeDto[];
 
   @IsString()
-  badge: string;
+  @IsOptional()
+  tag: string
 }

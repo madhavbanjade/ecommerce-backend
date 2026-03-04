@@ -52,16 +52,22 @@ export class ProductsService {
     req: Request,
   ): Promise<ApiResponse<Product>> {
     return ErrorHandler.execute(async () => {
-      const { sizes, discount_percentage, original_price, ...rest } =
+      const { sizes, discount_percentage, original_price, category,  ...rest } =
         createProductDto;
+
+      //for quantity
       const quantity = calculateTotalQuantity(sizes);
 
+      //for discount
       const discounted_price = calculateDiscountedPrice(
         original_price,
         discount_percentage,
       );
 
+      //for files
       const imagePaths = files.map((file) => `/uploads/image/${file.filename}`);
+
+      const tag = req.body.tag as string;
 
       const createProduct = await this.prisma.product.create({
         data: {
@@ -71,6 +77,9 @@ export class ProductsService {
           discount_percentage,
           discounted_price,
           quantity,
+          category,
+          isNew: tag === "new",
+          isOnSale: tag === "on-sale",
           is_avilable: quantity > 0,
           sizes: {
             create: sizes.map((s) => ({
@@ -93,12 +102,17 @@ export class ProductsService {
 
   async findAll(req: Request): Promise<ApiResponse<Product[]>> {
     return ErrorHandler.execute(async () => {
+     
+
       const retrivedProducts = await this.prisma.product.findMany({
         include: {
           // this is imp for nested dto to what to show and what not to show
           sizes: true,
         },
       });
+
+      
+
       if (retrivedProducts.length === 0)
         throw ErrorHandler.notFound('Products');
 
@@ -173,21 +187,21 @@ export class ProductsService {
         finalImages = finalImages.filter((img) => !removeImages.includes(img));
       }
 
-    // Maximum allowed images
+      // Maximum allowed images
 
-    const MAX_IMAGES = 4;
+      const MAX_IMAGES = 4;
 
-// Check if adding these files would exceed the limit
-if (files?.length && finalImages.length + files.length <= MAX_IMAGES) {
-  const newImagesPath = files.map(
-    (file) => `/uploads/image/${file.filename}`
-  );
-  finalImages.push(...newImagesPath);
-} else {
-  console.log("Cannot add more images. Maximum of 4 reached.");
-  // Or return an error to the client, e.g.:
-  // res.status(400).json({ message: "Maximum 4 images allowed." });
-}
+      // Check if adding these files would exceed the limit
+      if (files?.length && finalImages.length + files.length <= MAX_IMAGES) {
+        const newImagesPath = files.map(
+          (file) => `/uploads/image/${file.filename}`,
+        );
+        finalImages.push(...newImagesPath);
+      } else {
+        console.log('Cannot add more images. Maximum of 4 reached.');
+        // Or return an error to the client, e.g.:
+        // res.status(400).json({ message: "Maximum 4 images allowed." });
+      }
 
       const product = await this.prisma.product.update({
         where: { id },
