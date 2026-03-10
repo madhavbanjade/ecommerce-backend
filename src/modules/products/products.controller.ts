@@ -10,6 +10,7 @@ import {
   UploadedFiles,
   ParseIntPipe,
   Req,
+  Query,
 } from '@nestjs/common';
 import { ProductsService } from './products.service.js';
 import { CreateProductDto } from './dto/create-product.dto.js';
@@ -35,8 +36,8 @@ export class ProductsController {
   }
 
   @Get('/')
-  findAll(@Req() req: Request) {
-    return this.productsService.findAll(req);
+  async findAll(@Query() query: any, @Req() req: Request) {
+    return this.productsService.filterProduct(req);
   }
 
   @UseGuards(ProtectLoginGuard)

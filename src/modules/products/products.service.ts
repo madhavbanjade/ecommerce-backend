@@ -96,30 +96,42 @@ export class ProductsService {
     }, 'ProductsService.create');
   }
 
-  async findAll(req: Request): Promise<ApiResponse<Product[]>> {
+  
+
+  async filterProduct(req: Request,): Promise<ApiResponse<Product[]>> {
     return ErrorHandler.execute(async () => {
-      const tag = req.query.tag as string;
-      console.log('tag', tag);
-      const category = req.query.category as string;
-      const filters: any = {};
-      if (category) filters.category = category;
-      if (tag) filters.tag = tag;
-      const retrivedProducts = await this.prisma.product.findMany({
-        where: filters,
+      const { tag, category, minPrice, maxPrice, sort, page, limit } =
+        req.query as any;
+      const where: any = {};
+      //filters
+      //tag
+      if (tag) {
+        where.tag = tag;
+      }
+      //category
+      if (category) {
+        where.category = category;
+      }
+
+      //sorting
+      let orderBy: any = { createdAt: 'desc' };
+      if (sort === 'price_asc') orderBy = { original_price: 'asc' };
+      if (sort === 'price_desc') orderBy = { original_price: 'desc' };
+      if (sort === 'discount') orderBy = { discount_percentage: 'asc' };
+      if (sort === 'newest') orderBy = { createdAt: 'desc' };
+
+      const products = await this.prisma.product.findMany({
+        where,
+        orderBy,
         include: {
-          // this is imp for nested dto to what to show and what not to show
           sizes: true,
         },
       });
-
-      if (retrivedProducts.length === 0)
-        throw ErrorHandler.notFound('Products');
-
       return SuccessResponseHandler.retrived(
         'product',
-        retrivedProducts.map((p) => this.transformProduct(p, req)), // ✅ transform all
+        products.map((p) => this.transformProduct(p, req)),
       );
-    }, 'ProductsService.findAll');
+    }, 'Productservice.filterPtroduct');
   }
 
   async findOne(id: number, req: Request): Promise<ApiResponse<any>> {
