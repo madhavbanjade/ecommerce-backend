@@ -25,6 +25,13 @@ export function calculateDiscountedPrice(
   return originalPrice - (originalPrice * discountPercentage) / 100;
 }
 
+//slugify
+export const slugify = (name: string) =>
+  name
+    .toLocaleLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]/g, '');
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -52,7 +59,7 @@ export class ProductsService {
     req: Request,
   ): Promise<ApiResponse<Product>> {
     return ErrorHandler.execute(async () => {
-      const { sizes, discount_percentage, original_price, category, ...rest } =
+      const {product_name, sizes, discount_percentage, original_price, category, ...rest } =
         createProductDto;
 
       //for quantity
@@ -70,6 +77,8 @@ export class ProductsService {
       const createProduct = await this.prisma.product.create({
         data: {
           ...rest,
+          product_name: product_name,
+          slug: slugify(product_name),
           images: imagePaths,
           original_price,
           discount_percentage,
@@ -96,9 +105,7 @@ export class ProductsService {
     }, 'ProductsService.create');
   }
 
-  
-
-  async filterProduct(req: Request,): Promise<ApiResponse<Product[]>> {
+  async filterProduct(req: Request): Promise<ApiResponse<Product[]>> {
     return ErrorHandler.execute(async () => {
       const { tag, category, minPrice, maxPrice, sort, page, limit } =
         req.query as any;
