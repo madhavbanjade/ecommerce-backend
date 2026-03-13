@@ -40,14 +40,18 @@ export class ProductsController {
     return this.productsService.filterProduct(req);
   }
 
+  @Get(":slug")
+  getProductBySlug(@Param('slug') slug: string){
+    return this.productsService.findBySlug(slug)
+  }
+
   @UseGuards(ProtectLoginGuard)
   @Get('/:id')
   findOne(@Param('id') id: string, @Req() req: Request) {
     return this.productsService.findOne(+id, req);
   }
 
-  //single product
-  @Get(":slug")
+  
   
 
   @UseGuards(ProtectLoginGuard, RoleProtectGuard)

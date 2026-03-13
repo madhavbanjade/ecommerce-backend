@@ -9,6 +9,8 @@ import {
 } from '../../common/handlers/success-response.handler.js';
 import { ErrorHandler } from '../../common/handlers/error.handler.js';
 import type { Request } from 'express';
+import * as  slugify from 'slugify';
+
 
 export function calculateTotalQuantity(
   sizes?: { stock_quantity: number }[],
@@ -25,13 +27,7 @@ export function calculateDiscountedPrice(
   return originalPrice - (originalPrice * discountPercentage) / 100;
 }
 
-//slugify
-export const slugify = (name: string) =>
-  name
-    .toLocaleLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]/g, '');
+
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -62,6 +58,12 @@ export class ProductsService {
       const {product_name, sizes, discount_percentage, original_price, category, ...rest } =
         createProductDto;
 
+
+        //for slug
+        const slug = (slugify as any)(product_name, {
+          lower: true, 
+          strict: true
+        })
       //for quantity
       const quantity = calculateTotalQuantity(sizes);
 
@@ -78,7 +80,7 @@ export class ProductsService {
         data: {
           ...rest,
           product_name: product_name,
-          slug: slugify(product_name),
+          slug: slug,
           images: imagePaths,
           original_price,
           discount_percentage,
@@ -107,7 +109,7 @@ export class ProductsService {
 
   async filterProduct(req: Request): Promise<ApiResponse<Product[]>> {
     return ErrorHandler.execute(async () => {
-      const { tag, category, minPrice, maxPrice, sort, page, limit } =
+      const { tag, category, sort } =
         req.query as any;
       const where: any = {};
       //filters
@@ -141,6 +143,13 @@ export class ProductsService {
     }, 'Productservice.filterPtroduct');
   }
 
+  async findBySlug(slug: string){
+    return this.prisma.product.findUnique({
+      where:{
+        slug: slug
+      }
+    })
+  }
   async findOne(id: number, req: Request): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
       const product = await this.prisma.product.findUnique({
