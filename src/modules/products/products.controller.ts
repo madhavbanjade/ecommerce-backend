@@ -46,6 +46,10 @@ export class ProductsController {
     return this.productsService.findOne(+id, req);
   }
 
+  //single product
+  @Get(":slug")
+  
+
   @UseGuards(ProtectLoginGuard, RoleProtectGuard)
   @Patch(':id')
   @UploadMultiple('images', 4)
