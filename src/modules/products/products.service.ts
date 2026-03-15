@@ -9,7 +9,7 @@ import {
 } from '../../common/handlers/success-response.handler.js';
 import { ErrorHandler } from '../../common/handlers/error.handler.js';
 import type { Request } from 'express';
-import * as  slugify from 'slugify';
+import { default as slugify } from "slugify"
 
 
 export function calculateTotalQuantity(
@@ -60,7 +60,7 @@ export class ProductsService {
 
 
         //for slug
-        const slug = (slugify as any)(product_name, {
+        const slug =(slugify as any).default(product_name, {
           lower: true, 
           strict: true
         })
@@ -137,19 +137,30 @@ export class ProductsService {
         },
       });
       return SuccessResponseHandler.retrived(
-        'product',
+        'Products',
         products.map((p) => this.transformProduct(p, req)),
       );
     }, 'Productservice.filterPtroduct');
   }
 
-  async findBySlug(slug: string){
-    return this.prisma.product.findUnique({
-      where:{
-        slug: slug
-      }
-    })
-  }
+async findBySlug(slug: string, req: Request): Promise<ApiResponse<any>> {
+  return ErrorHandler.execute(async () => {
+    const product = await this.prisma.product.findUnique({
+      where: { slug },
+      include: { sizes: true },
+    });
+
+    if (!product) {
+      throw ErrorHandler.notFound(`Product with slug "${slug}" not found`);
+    }
+
+    return SuccessResponseHandler.retrived(
+      'product',
+      this.transformProduct(product, req),
+    );
+  }, 'ProductsService.findBySlug');
+}
+
   async findOne(id: number, req: Request): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
       const product = await this.prisma.product.findUnique({

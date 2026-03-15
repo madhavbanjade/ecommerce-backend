@@ -41,8 +41,8 @@ export class ProductsController {
   }
 
   @Get(":slug")
-  getProductBySlug(@Param('slug') slug: string){
-    return this.productsService.findBySlug(slug)
+  getProductBySlug(@Param('slug') slug: string, @Req() req: Request){
+    return this.productsService.findBySlug(slug, req)
   }
 
   @UseGuards(ProtectLoginGuard)
