@@ -2,31 +2,29 @@ import { Body, Injectable, Query, UploadedFile } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
 import { PrismaService } from '../../prisma.service.js';
-import { Product } from '@prisma/client';
+import { Gender, Product } from '@prisma/client';
 import {
   ApiResponse,
   SuccessResponseHandler,
 } from '../../common/handlers/success-response.handler.js';
 import { ErrorHandler } from '../../common/handlers/error.handler.js';
 import type { Request } from 'express';
-import { default as slugify } from "slugify"
-
+import { default as slugify } from 'slugify';
 
 export function calculateTotalQuantity(
-  sizes?: { stock_quantity: number }[],
+  sizes?: { stockQuantity: number }[],
   fallback = 0,
 ): number {
-  return sizes ? sizes.reduce((sum, s) => sum + s.stock_quantity, 0) : fallback;
+  return sizes ? sizes.reduce((sum, s) => sum + s.stockQuantity, 0) : fallback;
 }
 
 export function calculateDiscountedPrice(
   originalPrice: number,
-  discountPercentage?: number | null,
+  discountPercent?: number | null,
 ): number | null {
-  if (discountPercentage == null) return null;
-  return originalPrice - (originalPrice * discountPercentage) / 100;
+  if (discountPercent == null) return null;
+  return originalPrice - (originalPrice * discountPercent) / 100;
 }
-
 
 @Injectable()
 export class ProductsService {
@@ -55,51 +53,67 @@ export class ProductsService {
     req: Request,
   ): Promise<ApiResponse<Product>> {
     return ErrorHandler.execute(async () => {
-      const {product_name, sizes, discount_percentage, original_price, category, ...rest } =
-        createProductDto;
+      const {
+        name,
+        sizes,
+        gender,
+        discountPercent,
+        originalPrice,
+        category, // array of categories: [{name: "T-Shirts"}, ...]
+        ...rest
+      } = createProductDto;
 
+      // 1️⃣ Generate slug from product name
+      const slug = (slugify as any).default(name, {
+        lower: true,
+        strict: true,
+      });
 
-        //for slug
-        const slug =(slugify as any).default(product_name, {
-          lower: true, 
-          strict: true
-        })
-      //for quantity
-      const quantity = calculateTotalQuantity(sizes);
+      // 2️⃣ Calculate total stock quantity
+      const totalQuantity = calculateTotalQuantity(sizes);
 
-      //for discount
-      const discounted_price = calculateDiscountedPrice(
-        original_price,
-        discount_percentage,
+      // 3️⃣ Calculate discounted price
+      const discountPrice = calculateDiscountedPrice(
+        originalPrice,
+        discountPercent,
       );
 
-      //for files
+      // 4️⃣ Prepare image paths
       const imagePaths = files.map((file) => `/uploads/image/${file.filename}`);
 
+      // 5️⃣ Create product in DB
       const createProduct = await this.prisma.product.create({
         data: {
           ...rest,
-          product_name: product_name,
-          slug: slug,
+          name,
+          slug,
+          gender: gender as Gender,
           images: imagePaths,
-          original_price,
-          discount_percentage,
-          discounted_price,
-          quantity,
-          category,
-          is_avilable: quantity > 0,
+          originalPrice: originalPrice,
+          discountPercent: discountPercent,
+          dicountPrice: discountPrice,
+          isAvilable: totalQuantity > 0, // true if any stock
+          //  Link categories properly
+          category: {
+            create: category.map((c) => ({
+              name: c.name as any,
+            })),
+          },
+          // 5b️⃣ Create sizes
           sizes: {
             create: sizes.map((s) => ({
               size: s.size as any,
-              stock_quantity: s.stock_quantity,
+              stockQuantity: s.stockQuantity,
             })),
           },
         },
         include: {
           sizes: true,
+          category: true,
         },
       });
 
+      // 6️⃣ Return success response
       return SuccessResponseHandler.created(
         'Product',
         this.transformProduct(createProduct, req),
@@ -109,8 +123,7 @@ export class ProductsService {
 
   async filterProduct(req: Request): Promise<ApiResponse<Product[]>> {
     return ErrorHandler.execute(async () => {
-      const { tag, category, sort } =
-        req.query as any;
+      const { tag, gender, category, sort } = req.query as any;
       const where: any = {};
       //filters
       //tag
@@ -120,6 +133,9 @@ export class ProductsService {
       //category
       if (category) {
         where.category = category;
+      }
+      if (gender) {
+        where.gender = gender;
       }
 
       //sorting
@@ -143,23 +159,23 @@ export class ProductsService {
     }, 'Productservice.filterPtroduct');
   }
 
-async findBySlug(slug: string, req: Request): Promise<ApiResponse<any>> {
-  return ErrorHandler.execute(async () => {
-    const product = await this.prisma.product.findUnique({
-      where: { slug },
-      include: { sizes: true },
-    });
+  async findBySlug(slug: string, req: Request): Promise<ApiResponse<any>> {
+    return ErrorHandler.execute(async () => {
+      const product = await this.prisma.product.findUnique({
+        where: { slug },
+        include: { sizes: true },
+      });
 
-    if (!product) {
-      throw ErrorHandler.notFound(`Product with slug "${slug}" not found`);
-    }
+      if (!product) {
+        throw ErrorHandler.notFound(`Product with slug "${slug}" not found`);
+      }
 
-    return SuccessResponseHandler.retrived(
-      'product',
-      this.transformProduct(product, req),
-    );
-  }, 'ProductsService.findBySlug');
-}
+      return SuccessResponseHandler.retrived(
+        'product',
+        this.transformProduct(product, req),
+      );
+    }, 'ProductsService.findBySlug');
+  }
 
   async findOne(id: number, req: Request): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
@@ -181,95 +197,85 @@ async findBySlug(slug: string, req: Request): Promise<ApiResponse<any>> {
     }, 'ProductsService.findOne');
   }
 
-  async update(
-    id: number,
-    @Body() updateProductDto: UpdateProductDto,
-    files: Express.Multer.File[],
-  ): Promise<ApiResponse<Product>> {
-    return ErrorHandler.execute(async () => {
-      const {
-        sizes,
-        removeImages,
-        original_price,
-        discount_percentage,
-        ...rest
-      } = updateProductDto;
+  // async update(
+  //   id: number,
+  //   @Body() updateProductDto: UpdateProductDto,
+  //   files: Express.Multer.File[],
+  // ): Promise<ApiResponse<Product>> {
+  //   return ErrorHandler.execute(async () => {
+  //     const { sizes, removeImages, originalPrice, discountPercent, ...rest } =
+  //       updateProductDto;
 
-      // fetch existing product (needed for calculations)
-      const existing = await this.prisma.product.findUnique({
-        where: { id },
-        include: { sizes: true },
-      });
+  //     // fetch existing product (needed for calculations)
+  //     const existing = await this.prisma.product.findUnique({
+  //       where: { id },
+  //       include: { sizes: true },
+  //     });
 
-      if (!existing) {
-        throw ErrorHandler.notFound(`Product with id ${id}`);
-      }
-      const finalOriginalPrice = original_price ?? existing.original_price;
+  //     if (!existing) {
+  //       throw ErrorHandler.notFound(`Product with id ${id}`);
+  //     }
+  //     const finalOriginalPrice = originalPrice ?? existing.originalPrice;
 
-      const finalDiscountPercentage =
-        discount_percentage !== undefined
-          ? discount_percentage
-          : existing.discount_percentage;
+  //     const finalDiscountPercentage =
+  //       discountPercent !== undefined
+  //         ? discountPercent
+  //         : existing.discountPercent;
 
-      const discounted_price = calculateDiscountedPrice(
-        finalOriginalPrice,
-        finalDiscountPercentage,
-      );
+  //     const discountPrice = calculateDiscountedPrice(
+  //       finalOriginalPrice,
+  //       finalDiscountPercentage,
+  //     );
 
-      const quantity = calculateTotalQuantity(sizes, existing.quantity);
+  //     //track images
+  //     let finalImages = existing.images;
+  //     //remove images
+  //     if (removeImages?.length) {
+  //       finalImages = finalImages.filter((img) => !removeImages.includes(img));
+  //     }
 
-      //track images
-      let finalImages = existing.images;
-      //remove images
-      if (removeImages?.length) {
-        finalImages = finalImages.filter((img) => !removeImages.includes(img));
-      }
+  //     // Maximum allowed images
 
-      // Maximum allowed images
+  //     const MAX_IMAGES = 4;
 
-      const MAX_IMAGES = 4;
+  //     // Check if adding these files would exceed the limit
+  //     if (files?.length && finalImages.length + files.length <= MAX_IMAGES) {
+  //       const newImagesPath = files.map(
+  //         (file) => `/uploads/image/${file.filename}`,
+  //       );
+  //       finalImages.push(...newImagesPath);
+  //     } else {
+  //       console.log('Cannot add more images. Maximum of 4 reached.');
+  //       // Or return an error to the client, e.g.:
+  //       // res.status(400).json({ message: "Maximum 4 images allowed." });
+  //     }
 
-      // Check if adding these files would exceed the limit
-      if (files?.length && finalImages.length + files.length <= MAX_IMAGES) {
-        const newImagesPath = files.map(
-          (file) => `/uploads/image/${file.filename}`,
-        );
-        finalImages.push(...newImagesPath);
-      } else {
-        console.log('Cannot add more images. Maximum of 4 reached.');
-        // Or return an error to the client, e.g.:
-        // res.status(400).json({ message: "Maximum 4 images allowed." });
-      }
+  //     const product = await this.prisma.product.update({
+  //       where: { id },
+  //       data: {
+  //         ...rest,
+  //         images: finalImages,
+  //         ...(originalPrice !== undefined && { originalPrice }),
+  //         ...(discountPercent !== undefined && { discountPercent }),
 
-      const product = await this.prisma.product.update({
-        where: { id },
-        data: {
-          ...rest,
-          images: finalImages,
-          ...(original_price !== undefined && { original_price }),
-          ...(discount_percentage !== undefined && { discount_percentage }),
-          discounted_price,
-          quantity,
-          is_avilable: quantity > 0,
+  //         ...(sizes && {
+  //           sizes: {
+  //             deleteMany: {},
+  //             create: sizes.map((s) => ({
+  //               size: s.size as any,
+  //               stock_quantity: s.stockQuantity,
+  //             })),
+  //           },
+  //         }),
+  //       },
+  //       include: {
+  //         sizes: true,
+  //       },
+  //     });
 
-          ...(sizes && {
-            sizes: {
-              deleteMany: {},
-              create: sizes.map((s) => ({
-                size: s.size as any,
-                stock_quantity: s.stock_quantity,
-              })),
-            },
-          }),
-        },
-        include: {
-          sizes: true,
-        },
-      });
-
-      return SuccessResponseHandler.updated('Product', product);
-    }, 'ProductsService.update');
-  }
+  //     return SuccessResponseHandler.updated('Product', product);
+  //   }, 'ProductsService.update');
+  // }
 
   async remove(id: number): Promise<ApiResponse<Product>> {
     return ErrorHandler.execute(async () => {

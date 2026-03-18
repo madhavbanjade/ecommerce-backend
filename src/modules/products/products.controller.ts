@@ -54,16 +54,16 @@ export class ProductsController {
   
   
 
-  @UseGuards(ProtectLoginGuard, RoleProtectGuard)
-  @Patch(':id')
-  @UploadMultiple('images', 4)
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateProductDto: UpdateProductDto,
-    @UploadedFiles() files: Express.Multer.File[],
-  ) {
-    return this.productsService.update(id, updateProductDto, files);
-  }
+  // @UseGuards(ProtectLoginGuard, RoleProtectGuard)
+  // @Patch(':id')
+  // @UploadMultiple('images', 4)
+  // update(
+  //   @Param('id', ParseIntPipe) id: number,
+  //   @Body() updateProductDto: UpdateProductDto,
+  //   @UploadedFiles() files: Express.Multer.File[],
+  // ) {
+  //   return this.productsService.update(id, updateProductDto, files);
+  // }
 
   @UseGuards(ProtectLoginGuard, RoleProtectGuard)
   @Delete('/:id')

@@ -24,52 +24,82 @@ export class CreateSizeDto {
   @IsInt()
   @Min(0)
   @Type(() => Number)
-  stock_quantity: number;
+  stockQuantity: number;
 }
+
+export class CreatCategoryDto {
+  @IsString()
+  name: string;
+}
+
 export class CreateProductDto {
   @IsString()
   @MinLength(3, { message: 'Product Name must be at least 3 characters long' })
   @MaxLength(40, { message: 'Product Name not exceed 30 characters' })
-  product_name: string;
+  name: string;
 
   @IsString()
   @MinLength(10, { message: 'Description must be at least 10 characters' })
   @MaxLength(500)
-  product_description: string;
+  description: string;
+
+  @IsString()
+  gender: string;
 
   @IsNumber()
   @Min(1)
   @Type(() => Number)
-  original_price: number;
+  originalPrice: number;
+
+
 
   @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(100)
   @Type(() => Number)
-  discount_percentage?: number;
+  discountPercent?: number;
 
-  @IsString()
-  @MinLength(3, { message: 'Category must be at least 3 characters long' })
-  @MaxLength(40, { message: 'Category not exceed 30 characters' })
-  category: string;
+ @IsArray()
+@ValidateNested({ each: true })
+@Type(() => CreatCategoryDto)
+@Transform(({ value }) => {
+  if (!value) return [];
 
+  if (Array.isArray(value)) return value;
 
+  try {
+    return JSON.parse(value);
+  } catch {
+    return [{ name: value }];
+  }
+})
+category: CreatCategoryDto[];
 
   @IsArray()
   @IsString()
   @IsOptional()
   images?: string[];
 
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreateSizeDto)
-  @Transform(({ value }) =>
-    typeof value === 'string' ? JSON.parse(value) : value,
-  )
-  sizes: CreateSizeDto[];
+ 
+
+@IsArray()
+@ValidateNested({ each: true })
+@Type(() => CreateSizeDto)
+@Transform(({ value }) => {
+  if (!value) return [];
+
+  if (Array.isArray(value)) return value;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return [];
+  }
+})
+sizes: CreateSizeDto[];
 
   @IsString()
   @IsOptional()
-  tag: string
+  tag: string;
 }

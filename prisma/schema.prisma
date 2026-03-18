@@ -27,47 +27,55 @@ enum Size {
   xl4
 }
 
+enum Gender {
+  Male
+  Female
+  Unisex
+}
+
+
+//users schema
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   username  String?  @unique
   password  String?
   role      Role     @default(user)
-  // carts Cart[]
-  // faviroutes Favourites[]
-  // reviews   Reviews[]
   createdAt DateTime @default(now())
 }
 
+
+//product schema 
 model Product {
-  id                  Int           @id @default(autoincrement())
-  product_name        String        @unique
-  slug                String        @unique
-  product_description String
-  original_price      Int
-  discount_percentage Float?
-  discounted_price    Float?
-  images              String[]
-  quantity            Int
-  is_avilable         Boolean       @default(true)
-  tag                 String?
-  sizes               ProductSize[] @relation("ProductToProductSize")
-  category            String
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  id              Int           @id @default(autoincrement())
+  images          String[]
+  name            String        @unique
+  slug            String        @unique
+  description     String
+  gender          Gender
+  category        Category[]
+  originalPrice   Int
+  discountPercent Float?
+  dicountPrice    Float?
+  tag             String
+  sizes           ProductSize[] @relation("ProductToProductSize")
+  isAvilable      Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model ProductSize {
   productId      Int
   size           Size
-  stock_quantity Int
+  stockQuantity Int
   product        Product @relation("ProductToProductSize", fields: [productId], references: [id], onDelete: Cascade)
-
   @@unique([productId, size])
 }
 
-model FAQ {
-  id       Int     @id @default(autoincrement())
-  question String
-  answer   String?
+model Category {
+  id  String  @id @default(uuid())
+  name String 
+  products  Product[]
 }
+
+
