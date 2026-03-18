@@ -123,26 +123,45 @@ export class ProductsService {
 
   async filterProduct(req: Request): Promise<ApiResponse<Product[]>> {
     return ErrorHandler.execute(async () => {
-      const { tag, gender, category, sort } = req.query as any;
+      const { tag, gender, category, size, sort } = req.query as any;
       const where: any = {};
       //filters
       //tag
       if (tag) {
         where.tag = tag;
       }
-      //category
-      if (category) {
-        where.category = category;
-      }
+    
       if (gender) {
         where.gender = gender;
       }
 
+       //category - it is a relation so we should use some
+      if (category) {
+        const categoryArr = category.split(",");
+
+        where.category = {
+          some : {
+            name: {in:categoryArr}
+          }
+
+        }
+      }
+
+      //size - it is a relation so we should use some 
+      if(size){
+        const sizeArr = size.split(",");
+        where.sizes = {
+          some: {
+            size: {in: sizeArr}
+          }
+        }
+      }
+
       //sorting
       let orderBy: any = { createdAt: 'desc' };
-      if (sort === 'price_asc') orderBy = { original_price: 'asc' };
-      if (sort === 'price_desc') orderBy = { original_price: 'desc' };
-      if (sort === 'discount') orderBy = { discount_percentage: 'asc' };
+      if (sort === 'price_asc') orderBy = { originalPrice: 'asc' };
+      if (sort === 'price_desc') orderBy = { originalPrice: 'desc' };
+      if (sort === 'discount') orderBy = { discountPercent: 'asc' };
       if (sort === 'newest') orderBy = { createdAt: 'desc' };
 
       const products = await this.prisma.product.findMany({
@@ -150,6 +169,7 @@ export class ProductsService {
         orderBy,
         include: {
           sizes: true,
+          category: true
         },
       });
       return SuccessResponseHandler.retrived(
@@ -183,6 +203,7 @@ export class ProductsService {
         where: { id },
         include: {
           sizes: true,
+          category: true
         },
       });
 
