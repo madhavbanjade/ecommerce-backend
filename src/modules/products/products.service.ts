@@ -158,11 +158,19 @@ export class ProductsService {
       }
 
       //sorting
-      let orderBy: any = { createdAt: 'desc' };
-      if (sort === 'price_asc') orderBy = { originalPrice: 'asc' };
-      if (sort === 'price_desc') orderBy = { originalPrice: 'desc' };
-      if (sort === 'discount') orderBy = { discountPercent: 'asc' };
-      if (sort === 'newest') orderBy = { createdAt: 'desc' };
+let orderBy: any = { createdAt: "desc" };
+if (sort === "price-asc")   orderBy = { originalPrice: "asc" }; // ?sort=price-asc    → cheapest first
+if (sort === "price-desc")  orderBy = { originalPrice: "desc" }; // ?sort=price-desc   → most expensive first
+if (sort === "discount")    orderBy = { discountPercent: "desc" }; // ?sort=discount     → highest discount first
+
+
+
+
+
+
+
+
+      
 
       const products = await this.prisma.product.findMany({
         where,
