@@ -181,6 +181,8 @@ export class ProductsService {
         this.prisma.product.findMany({
           where,
           orderBy,
+          skip,
+          take,
           include: {
             sizes: true,
             category: true,
@@ -196,6 +198,9 @@ export class ProductsService {
           total,
           page: currentPage,
           limit: take,
+          totalPages: Math.ceil(total / take),
+          hasNext: currentPage < Math.ceil(total / take),
+          hasPrev: currentPage > 1,
         },
       );
     }, 'Productservice.filterPtroduct');
