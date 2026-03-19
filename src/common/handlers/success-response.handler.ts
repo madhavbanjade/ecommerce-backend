@@ -38,7 +38,8 @@ export class SuccessResponseHandler {
     resource: string,
  
     data?: T,
+    meta?:  any
   ): ApiResponse<T> {
-    return this.success(`${resource} retrived  successfully`, data);
+    return this.success(`${resource} retrived  successfully`, data, meta);
   }
 }

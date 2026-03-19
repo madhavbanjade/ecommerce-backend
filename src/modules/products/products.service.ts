@@ -121,9 +121,10 @@ export class ProductsService {
     }, 'ProductsService.create');
   }
 
-  async filterProduct(req: Request): Promise<ApiResponse<Product[]>> {
+  async filterProduct(req: Request): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
-      const { tag, gender, category, size, sort, search } = req.query as any;
+      const { tag, gender, category, size, sort, search, page, limit } =
+        req.query as any;
       const where: any = {};
       //filters
       //tag
@@ -147,12 +148,12 @@ export class ProductsService {
       }
 
       //for search
-      if(search){
+      if (search) {
         where.OR = [
-          {name: {contains: search, mode: "insensitive"}},
-          {description: {contains: search, mode: "insensitive"}},
-          {tag: {contains: search, mode: "insensitive"}},
-        ]
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { tag: { contains: search, mode: 'insensitive' } },
+        ];
       }
 
       //size - it is a relation so we should use some
@@ -171,17 +172,31 @@ export class ProductsService {
       if (sort === 'price-desc') orderBy = { originalPrice: 'desc' }; // ?sort=price-desc   → most expensive first
       if (sort === 'discount') orderBy = { discountPercent: 'desc' }; // ?sort=discount     → highest discount first
 
-      const products = await this.prisma.product.findMany({
-        where,
-        orderBy,
-        include: {
-          sizes: true,
-          category: true,
-        },
-      });
+      //pagination
+      const take = parseInt(limit) || 12; //if limit is missing, invalid, or NaN, default to 12 items per page
+      const currentPage = parseInt(page) || 1; //page = "2" → currentPage = 2, page = undefined → currentPage = 1
+      const skip = (currentPage - 1) * take; //how many items to ignore before starting
+
+      const [products, total] = await Promise.all([
+        this.prisma.product.findMany({
+          where,
+          orderBy,
+          include: {
+            sizes: true,
+            category: true,
+          },
+        }),
+        this.prisma.product.count({ where }),
+      ]);
+
       return SuccessResponseHandler.retrived(
         'Products',
-        products.map((p) => this.transformProduct(p, req)),
+        products.map((p) => this.transformProduct(p, req)), // ✅ actual data
+        {
+          total,
+          page: currentPage,
+          limit: take,
+        },
       );
     }, 'Productservice.filterPtroduct');
   }
