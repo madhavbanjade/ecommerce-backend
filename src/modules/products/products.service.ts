@@ -123,61 +123,60 @@ export class ProductsService {
 
   async filterProduct(req: Request): Promise<ApiResponse<Product[]>> {
     return ErrorHandler.execute(async () => {
-      const { tag, gender, category, size, sort } = req.query as any;
+      const { tag, gender, category, size, sort, search } = req.query as any;
       const where: any = {};
       //filters
       //tag
       if (tag) {
         where.tag = tag;
       }
-    
+
       if (gender) {
         where.gender = gender;
       }
 
-       //category - it is a relation so we should use some
+      //category - it is a relation so we should use some
       if (category) {
-        const categoryArr = category.split(",");
+        const categoryArr = category.split(',');
 
         where.category = {
-          some : {
-            name: {in:categoryArr}
-          }
-
-        }
+          some: {
+            name: { in: categoryArr },
+          },
+        };
       }
 
-      //size - it is a relation so we should use some 
-      if(size){
-        const sizeArr = size.split(",");
+      //for search
+      if(search){
+        where.OR = [
+          {name: {contains: search, mode: "insensitive"}},
+          {description: {contains: search, mode: "insensitive"}},
+          {tag: {contains: search, mode: "insensitive"}},
+        ]
+      }
+
+      //size - it is a relation so we should use some
+      if (size) {
+        const sizeArr = size.split(',');
         where.sizes = {
           some: {
-            size: {in: sizeArr}
-          }
-        }
+            size: { in: sizeArr },
+          },
+        };
       }
 
       //sorting
-let orderBy: any = { createdAt: "desc" };
-if (sort === "price-asc")   orderBy = { originalPrice: "asc" }; // ?sort=price-asc    → cheapest first
-if (sort === "price-desc")  orderBy = { originalPrice: "desc" }; // ?sort=price-desc   → most expensive first
-if (sort === "discount")    orderBy = { discountPercent: "desc" }; // ?sort=discount     → highest discount first
-
-
-
-
-
-
-
-
-      
+      let orderBy: any = { createdAt: 'desc' };
+      if (sort === 'price-asc') orderBy = { originalPrice: 'asc' }; // ?sort=price-asc    → cheapest first
+      if (sort === 'price-desc') orderBy = { originalPrice: 'desc' }; // ?sort=price-desc   → most expensive first
+      if (sort === 'discount') orderBy = { discountPercent: 'desc' }; // ?sort=discount     → highest discount first
 
       const products = await this.prisma.product.findMany({
         where,
         orderBy,
         include: {
           sizes: true,
-          category: true
+          category: true,
         },
       });
       return SuccessResponseHandler.retrived(
@@ -211,7 +210,7 @@ if (sort === "discount")    orderBy = { discountPercent: "desc" }; // ?sort=disc
         where: { id },
         include: {
           sizes: true,
-          category: true
+          category: true,
         },
       });
 
