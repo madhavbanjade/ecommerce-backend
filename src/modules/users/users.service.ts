@@ -14,7 +14,7 @@ import { Role, User } from '@prisma/client';
 import { BcryptService } from '../../common/services/bcrypt.service.js';
 
 interface JwtPayload {
-  sub: number;
+  sub: string;
   name: string;
   email: string;
   role: Role;
@@ -47,7 +47,7 @@ export class UsersService {
 
   async login(loginUserDto: LoginUserDto): Promise<
     ApiResponse<{
-      id: number;
+      id: string;
       email: string;
       access_token: string;
       refresh_token: string;
@@ -123,7 +123,7 @@ export class UsersService {
     return SuccessResponseHandler.retrived('Users', RetrivedMany);
   }
 
-  async findOne(id: number): Promise<ApiResponse<any>> {
+  async findOne(id: string): Promise<ApiResponse<any>> {
     const RetriveOne = await this.prisma.user.findUnique({
       where: {
         id: id,
@@ -142,9 +142,9 @@ export class UsersService {
   }
 
   async update(
-    id: number,
+    id: string,
     updateUserDto: UpdateUserDto,
-  ): Promise<ApiResponse<{ id: number; email: string }>> {
+  ): Promise<ApiResponse<{ id: string; email: string }>> {
     try {
       const updatedUser = await this.prisma.user.update({
         where: { id },
@@ -161,8 +161,8 @@ export class UsersService {
   }
   //no response in postman....
   async remove(
-    id: number,
-  ): Promise<ApiResponse<{ id: number; email: string }>> {
+    id: string,
+  ): Promise<ApiResponse<{ id: string; email: string }>> {
     try {
       const deletedUser = await this.prisma.user.delete({
         where: { id: id },

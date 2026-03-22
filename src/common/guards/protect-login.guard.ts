@@ -49,11 +49,11 @@ export class ProtectLoginGuard implements CanActivate {
         });
       } catch {
         ErrorHandler.unauthorized('Invalid access token');
-      }
+      } 
     }
 
     //request variable if valid
-    request['user'] = payload; //!!!
+    request['user'] = {...payload,  id: String(payload.id)}; //!!!
     console.log(request.user);
     return true;
   }

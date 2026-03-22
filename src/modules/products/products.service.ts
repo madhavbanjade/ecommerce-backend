@@ -99,7 +99,7 @@ export class ProductsService {
               name: c.name as any,
             })),
           },
-          // 5b️⃣ Create sizes
+          // 5b️ Create sizes
           sizes: {
             create: sizes.map((s) => ({
               size: s.size as any,
@@ -186,6 +186,7 @@ export class ProductsService {
           include: {
             sizes: true,
             category: true,
+            reviews: true
           },
         }),
         this.prisma.product.count({ where }),
@@ -210,7 +211,10 @@ export class ProductsService {
     return ErrorHandler.execute(async () => {
       const product = await this.prisma.product.findUnique({
         where: { slug },
-        include: { sizes: true },
+        include: { sizes: true,
+          category: true,
+          reviews: true
+        },
       });
 
       if (!product) {
@@ -224,7 +228,7 @@ export class ProductsService {
     }, 'ProductsService.findBySlug');
   }
 
-  async findOne(id: number, req: Request): Promise<ApiResponse<any>> {
+  async findOne(id: string, req: Request): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
       const product = await this.prisma.product.findUnique({
         where: { id },
@@ -325,7 +329,7 @@ export class ProductsService {
   //   }, 'ProductsService.update');
   // }
 
-  async remove(id: number): Promise<ApiResponse<Product>> {
+  async remove(id: string): Promise<ApiResponse<Product>> {
     return ErrorHandler.execute(async () => {
       const deleteProduct = await this.prisma.product.delete({
         where: { id },

@@ -48,7 +48,7 @@ export class ProductsController {
   @UseGuards(ProtectLoginGuard)
   @Get('/:id')
   findOne(@Param('id') id: string, @Req() req: Request) {
-    return this.productsService.findOne(+id, req);
+    return this.productsService.findOne(id, req);
   }
 
   
@@ -68,6 +68,6 @@ export class ProductsController {
   @UseGuards(ProtectLoginGuard, RoleProtectGuard)
   @Delete('/:id')
   remove(@Param('id') id: string) {
-    return this.productsService.remove(+id);
+    return this.productsService.remove(id);
   }
 }

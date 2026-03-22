@@ -33,21 +33,21 @@ enum Gender {
   Unisex
 }
 
-
 //users schema
 model User {
-  id        Int      @id @default(autoincrement())
+  id String @id @default(uuid())
+
   email     String   @unique
   username  String?  @unique
   password  String?
   role      Role     @default(user)
+  reviews   Review[]
   createdAt DateTime @default(now())
 }
 
-
 //product schema 
 model Product {
-  id              Int           @id @default(autoincrement())
+  id String @id @default(uuid())
   images          String[]
   name            String        @unique
   slug            String        @unique
@@ -58,24 +58,39 @@ model Product {
   discountPercent Float?
   dicountPrice    Float?
   tag             String
-  sizes           ProductSize[] @relation("ProductToProductSize")
+  sizes           ProductSize[]
   isAvilable      Boolean       @default(true)
+  reviews         Review[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
 
 model ProductSize {
-  productId      Int
-  size           Size
+  id     String  @id @default(uuid())
+   productId     String
+  size          Size
   stockQuantity Int
-  product        Product @relation("ProductToProductSize", fields: [productId], references: [id], onDelete: Cascade)
+  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
   @@unique([productId, size])
 }
 
 model Category {
-  id  String  @id @default(uuid())
-  name String 
-  products  Product[]
+  id       String    @id @default(uuid())
+  name     String
+  products Product[]
 }
 
-
+//review schema 
+model Review {
+  id        String   @id @default(uuid())
+  productId String
+  UserId    String
+  rating    Int
+  title     String
+  comment   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [UserId], references: [id], onDelete: Cascade)
+}
