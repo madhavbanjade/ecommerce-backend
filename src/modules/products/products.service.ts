@@ -235,6 +235,7 @@ export class ProductsService {
         include: {
           sizes: true,
           category: true,
+          reviews: true
         },
       });
 
