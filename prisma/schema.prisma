@@ -42,6 +42,7 @@ model User {
   password  String?
   role      Role     @default(user)
   reviews   Review[]
+  wishlist  Product[] @relation("UserWishlist")
   createdAt DateTime @default(now())
 }
 
@@ -61,6 +62,7 @@ model Product {
   sizes           ProductSize[]
   isAvilable      Boolean       @default(true)
   reviews         Review[]
+  wishlistBy      User[] @relation("UserWishlist")
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }

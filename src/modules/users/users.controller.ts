@@ -46,6 +46,22 @@ export class UsersController {
     return result;
   }
 
+
+  @UseGuards(ProtectLoginGuard)
+    @Post("wishlist/:productId")
+  toogleWishlist(@Param("productId") productId: string, @Req() req: any){
+    const userId = req.user?.sub
+    console.log("user",  userId)
+    return this.usersService.toogleWishlist(userId, productId)
+  }
+
+  @UseGuards(ProtectLoginGuard)
+  @Get("wishlist")
+getWishlist(@Req() req: any) {
+  const userId = req.user?.sub
+  return this.usersService.getWishlist(userId, req)
+}
+
   @UseGuards(ProtectLoginGuard, RoleProtectGuard)
   @Get()
   findAll() {
@@ -69,4 +85,7 @@ export class UsersController {
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }
+
+
+
 }

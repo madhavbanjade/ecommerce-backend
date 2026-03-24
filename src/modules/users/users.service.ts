@@ -12,6 +12,8 @@ import {
 import { ErrorHandler } from '../../common/handlers/error.handler.js';
 import { Role, User } from '@prisma/client';
 import { BcryptService } from '../../common/services/bcrypt.service.js';
+import { retry } from 'rxjs';
+import { disconnect } from 'process';
 
 interface JwtPayload {
   sub: string;
@@ -73,7 +75,7 @@ export class UsersService {
       // 3️⃣ Prepare JWT payload
       const payload: JwtPayload = {
         sub: user.id,
-        name: user.username || '' ,
+        name: user.username || '',
         email: user.email,
         role: user.role,
       };
@@ -118,6 +120,12 @@ export class UsersService {
         username: true,
         email: true,
         role: true,
+        wishlist: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
     return SuccessResponseHandler.retrived('Users', RetrivedMany);
@@ -133,6 +141,12 @@ export class UsersService {
         username: true,
         email: true,
         role: true,
+        wishlist: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
     if (!RetriveOne) {
@@ -174,5 +188,50 @@ export class UsersService {
     } catch (error) {
       ErrorHandler.handle(error, 'UsersService.delete');
     }
+  }
+
+  //toggle wishlist
+  async toogleWishlist(
+    userId: string,
+    productId: string,
+  ): Promise<ApiResponse<any>> {
+    return ErrorHandler.execute(async () => {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { wishlist: { where: { id: productId } } },
+      });
+      console.log('userService -> ', user);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      const isWishlisted = user.wishlist.length > 0;
+
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          wishlist: isWishlisted
+            ? { disconnect: { id: productId } }
+            : { connect: { id: productId } },
+        },
+      });
+      return SuccessResponseHandler.retrived('Wishlist', {
+        wishlisted: !isWishlisted,
+        message: isWishlisted ? 'Removed from wishlist' : 'Added to wishlist',
+      });
+    }, 'UserService.toogleWishlist');
+  }
+
+  async getWishlist(userId: string, req: Request) {
+    return ErrorHandler.execute(async () => {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          wishlist: {
+            include: { sizes: true, category: true },
+          },
+        },
+      });
+      return SuccessResponseHandler.retrived('Wishlist', user);
+    }, 'UserService.getWishlist');
   }
 }
