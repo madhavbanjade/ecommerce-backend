@@ -13,22 +13,20 @@ import { UpdateReviewDto } from './dto/update-review.dto.js';
 export class ReviewsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(
-    @Body() createReviewDto: CreateReviewDto, userId: string
-  ): Promise<ApiResponse<Review>> {
-    return ErrorHandler.execute(async () => {
-      const review = await this.prisma.review.create({
-        data: {
-          productId: createReviewDto.productId,
-          UserId: userId,
-          rating: createReviewDto.rating,
-          title: createReviewDto.title,
-          comment: createReviewDto.comment,
-        },
-      });
-      return SuccessResponseHandler.created('Review', review);
-    }, 'ReviewService.create');
-  }
+  async create(createReviewDto: CreateReviewDto, userId: string): Promise<ApiResponse<Review>> {
+  return ErrorHandler.execute(async () => {
+    const review = await this.prisma.review.create({
+      data: {
+        rating: createReviewDto.rating,
+        title: createReviewDto.title,
+        comment: createReviewDto.comment,
+        product: { connect: { id: createReviewDto.productId } },
+        user: { connect: { id: userId } },
+      },
+    })
+    return SuccessResponseHandler.created("Review", review)
+  }, "ReviewService.create")
+}
 
 
 async update(

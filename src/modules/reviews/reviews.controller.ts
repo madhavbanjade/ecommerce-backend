@@ -14,7 +14,8 @@ export class ReviewsController {
 @UseGuards(ProtectLoginGuard)
   @Post()
   create(@Body() createReviewDto: CreateReviewDto, @Req() req:any) {
-    const userId = req.user?.sub
+    console.log("req.user →", req.user)  
+    const userId = req.user?.sub;
     console.log("user", userId)
     return this.reviewsService.create(createReviewDto, userId);
   }

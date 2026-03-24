@@ -186,7 +186,15 @@ export class ProductsService {
           include: {
             sizes: true,
             category: true,
-            reviews: true
+            reviews: {
+              include: {
+                user: {
+                  select: {
+                    username: true,
+                  },
+                },
+              },
+            },
           },
         }),
         this.prisma.product.count({ where }),
@@ -211,9 +219,18 @@ export class ProductsService {
     return ErrorHandler.execute(async () => {
       const product = await this.prisma.product.findUnique({
         where: { slug },
-        include: { sizes: true,
+        include: {
+          sizes: true,
           category: true,
-          reviews: true
+          reviews: {
+            include: {
+              user: {
+                select: {
+                  username: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -235,7 +252,15 @@ export class ProductsService {
         include: {
           sizes: true,
           category: true,
-          reviews: true
+          reviews: {
+            include: {
+              user: {
+                select: {
+                  username: true,
+                },
+              },
+            },
+          },
         },
       });
 

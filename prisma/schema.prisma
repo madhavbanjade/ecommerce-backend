@@ -35,7 +35,7 @@ enum Gender {
 
 //users schema
 model User {
-  id String @id @default(uuid())
+  id String @id @default(uuid()) 
 
   email     String   @unique
   username  String?  @unique
