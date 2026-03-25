@@ -52,8 +52,8 @@ export class ProtectLoginGuard implements CanActivate {
       } 
     }
 
-    //request variable if valid
-    request['user'] = {...payload,  id: String(payload.id)}; //!!!
+ // Attach user to request
+    request['user'] = payload
     console.log("request.user set →", request['user']) ;
     return true;
   }

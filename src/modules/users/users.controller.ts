@@ -20,7 +20,7 @@ import type { Request, Response } from 'express';
 import { setAuthCookies } from '../../common/cookies/auth-cookie.js';
 import { ProtectLoginGuard } from '../../common/guards/protect-login.guard.js';
 
-@Controller('users')
+@Controller("users")
 export class UsersController {
   //constructor-based injection => providers or services
   constructor(private readonly usersService: UsersService) {}
@@ -50,15 +50,16 @@ export class UsersController {
   @UseGuards(ProtectLoginGuard)
     @Post("wishlist/:productId")
   toogleWishlist(@Param("productId") productId: string, @Req() req: any){
-    const userId = req.user?.sub
-    console.log("user",  userId)
+    const userId = req.user.id
+    console.log("userID",  userId)
     return this.usersService.toogleWishlist(userId, productId)
   }
 
   @UseGuards(ProtectLoginGuard)
   @Get("wishlist")
 getWishlist(@Req() req: any) {
-  const userId = req.user?.sub
+  const userId = req.user?.id
+  console.log("userid", userId)
   return this.usersService.getWishlist(userId, req)
 }
 

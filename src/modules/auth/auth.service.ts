@@ -23,6 +23,7 @@ export class AuthService {
         data: {
           email: googleUser.email,
           username: googleUser.username,
+          password: googleUser.password
         },
       });
     }

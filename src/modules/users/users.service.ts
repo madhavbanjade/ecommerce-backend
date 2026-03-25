@@ -16,7 +16,7 @@ import { retry } from 'rxjs';
 import { disconnect } from 'process';
 
 interface JwtPayload {
-  sub: string;
+  id: string;
   name: string;
   email: string;
   role: Role;
@@ -74,7 +74,7 @@ export class UsersService {
 
       // 3️⃣ Prepare JWT payload
       const payload: JwtPayload = {
-        sub: user.id,
+        id: user.id,
         name: user.username || '',
         email: user.email,
         role: user.role,
@@ -221,17 +221,17 @@ export class UsersService {
     }, 'UserService.toogleWishlist');
   }
 
-  async getWishlist(userId: string, req: Request) {
-    return ErrorHandler.execute(async () => {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        include: {
-          wishlist: {
-            include: { sizes: true, category: true },
+    async getWishlist(userId: string, req: Request) {
+      return ErrorHandler.execute(async () => {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          include: {
+            wishlist: {
+              include: { sizes: true, category: true },
+            },
           },
-        },
-      });
-      return SuccessResponseHandler.retrived('Wishlist', user);
-    }, 'UserService.getWishlist');
-  }
+        });
+        return SuccessResponseHandler.retrived('Wishlist', user);
+      }, 'UserService.getWishlist');
+    }
 }
