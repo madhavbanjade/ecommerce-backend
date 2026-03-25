@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { ErrorHandler } from '../handlers/error.handler.js';
@@ -20,7 +20,7 @@ export class ProtectLoginGuard implements CanActivate {
 
     // ✅ No refresh token → user NOT logged in → allow login
     if (!refresh_token) {
-      return true;
+      throw new UnauthorizedException("Not logged in")
     }
     let payload: any;
     try {
@@ -53,7 +53,7 @@ export class ProtectLoginGuard implements CanActivate {
     }
 
  // Attach user to request
-    request['user'] = payload
+  request['user'] = { ...payload, id: String(payload.id) }  //added
     console.log("request.user set →", request['user']) ;
     return true;
   }

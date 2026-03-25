@@ -12,8 +12,8 @@ import {
 import { ErrorHandler } from '../../common/handlers/error.handler.js';
 import { Role, User } from '@prisma/client';
 import { BcryptService } from '../../common/services/bcrypt.service.js';
-import { retry } from 'rxjs';
-import { disconnect } from 'process';
+import { ProductsService } from '../products/products.service.js';
+import type { Request } from 'express'
 
 interface JwtPayload {
   id: string;
@@ -29,7 +29,10 @@ export class UsersService {
     private readonly bcryptService: BcryptService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly productService: ProductsService
+    
   ) {}
+
 
   async create(
     @Body() createUserDto: CreateUserDto,
@@ -113,23 +116,20 @@ export class UsersService {
     }, 'UsersService.login');
   }
 
-  async findAll(): Promise<ApiResponse<any>> {
-    const RetrivedMany = await this.prisma.user.findMany({
+ async findAll(): Promise<ApiResponse<any>> {
+  return ErrorHandler.execute(async () => {  // ✅ wrap in ErrorHandler
+    const users = await this.prisma.user.findMany({
       select: {
         id: true,
         username: true,
         email: true,
         role: true,
-        wishlist: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
-    return SuccessResponseHandler.retrived('Users', RetrivedMany);
-  }
+        wishlist: { select: { id: true, name: true } }
+      }
+    })
+    return SuccessResponseHandler.retrived('Users', users)
+  }, 'UsersService.findAll')
+}
 
   async findOne(id: string): Promise<ApiResponse<any>> {
     const RetriveOne = await this.prisma.user.findUnique({
@@ -231,7 +231,11 @@ export class UsersService {
             },
           },
         });
-        return SuccessResponseHandler.retrived('Wishlist', user);
+        return SuccessResponseHandler.retrived('Wishlist', 
+          
+          user?.wishlist.map((p:any) => this.productService.transformProduct(p, req))
+        
+        ); //fix
       }, 'UserService.getWishlist');
     }
 }

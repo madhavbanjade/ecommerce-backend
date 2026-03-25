@@ -12,13 +12,12 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
-import { ProductsService } from './products.service.js';
-import { CreateProductDto } from './dto/create-product.dto.js';
-import { UpdateProductDto } from './dto/update-product.dto.js';
 import { ProtectLoginGuard } from '../../common/guards/protect-login.guard.js';
 import { RoleProtectGuard } from '../../common/guards/roles.guard.js';
 import { UploadMultiple } from '../../common/config/multer.config.js';
 import type { Request } from 'express';
+import { ProductsService } from './products.service.js';
+import { CreateProductDto } from './dto/create-product.dto.js';
 
 @Controller('products')
 export class ProductsController {

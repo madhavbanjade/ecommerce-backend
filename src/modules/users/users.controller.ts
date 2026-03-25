@@ -57,7 +57,7 @@ export class UsersController {
 
   @UseGuards(ProtectLoginGuard)
   @Get("wishlist")
-getWishlist(@Req() req: any) {
+ getWishlist(@Req() req: any) {
   const userId = req.user?.id
   console.log("userid", userId)
   return this.usersService.getWishlist(userId, req)

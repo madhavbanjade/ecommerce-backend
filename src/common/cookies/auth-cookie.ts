@@ -6,8 +6,9 @@ export const getBaseCookieOptions = (req: Request): CookieOptions => {
 
   return {
     httpOnly: true,
-    secure: isSecure, // false on localhost http
-    sameSite: 'lax',
+    secure: true, // false on localhost http
+    // sameSite: "lax" is blocking cookies in your frontend GET request
+    sameSite: 'none',  //works only for https
     path: '/',
   };
 };

@@ -34,14 +34,14 @@ export class ProductsService {
     return `${req.protocol}://${req.get('host')}${path}`;
   }
 
-  private transformProduct(product: any, req: Request): Product {
-    return {
-      ...product,
-      images: product.images.map((img: string) =>
-        this.generateImageUrl(req, img),
-      ),
-    };
-  }
+    public transformProduct(product: any, req: Request): Product {
+      return {
+        ...product,
+        images: product.images.map((img: string) =>
+          this.generateImageUrl(req, img),
+        ),
+      };
+    }
 
   // result.success      // ✅ boolean
   // result.message      // ✅ string
