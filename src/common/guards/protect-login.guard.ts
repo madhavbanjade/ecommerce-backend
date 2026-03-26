@@ -18,7 +18,6 @@ export class ProtectLoginGuard implements CanActivate {
     //refresh token
     const refresh_token = request.cookies.refresh_token;
 
-    // ✅ No refresh token → user NOT logged in → allow login
     if (!refresh_token) {
       throw new UnauthorizedException("Not logged in")
     }
