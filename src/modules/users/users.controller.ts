@@ -69,10 +69,10 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  @UseGuards(ProtectLoginGuard, RoleProtectGuard)
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  @UseGuards(ProtectLoginGuard)
+  @Get('me')
+  getMe(@Req() req) {
+    return this.usersService.getMe(req.user.id);
   }
 
   @UseGuards(ProtectLoginGuard)

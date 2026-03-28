@@ -131,14 +131,14 @@ export class UsersService {
   }, 'UsersService.findAll')
 }
 
-  async findOne(id: string): Promise<ApiResponse<any>> {
-    const RetriveOne = await this.prisma.user.findUnique({
+  async getMe(userId: string): Promise<ApiResponse<any>> {
+    const user = await this.prisma.user.findUnique({
       where: {
-        id: id,
+        id: userId,
       },
       select: {
         id: true,
-        username: true,
+        username: true, 
         email: true,
         role: true,
         wishlist: {
@@ -149,10 +149,10 @@ export class UsersService {
         },
       },
     });
-    if (!RetriveOne) {
-      throw ErrorHandler.notFound(`User with id ${id}`);
+    if (!user) {
+      throw ErrorHandler.notFound(`User with id ${userId}`);
     }
-    return SuccessResponseHandler.retrived('User', RetriveOne);
+    return SuccessResponseHandler.retrived('User', user);
   }
 
   async update(
