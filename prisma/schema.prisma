@@ -35,20 +35,21 @@ enum Gender {
 
 //users schema
 model User {
-  id String @id @default(uuid()) 
+  id String @id @default(uuid())
 
-  email     String   @unique
-  username  String  @unique
+  email     String    @unique
+  username  String    @unique
   password  String
-  role      Role     @default(user)
+  role      Role      @default(user)
   reviews   Review[]
   wishlist  Product[] @relation("UserWishlist")
-  createdAt DateTime @default(now())
+  cart      Cart[]
+  createdAt DateTime  @default(now())
 }
 
 //product schema 
 model Product {
-  id String @id @default(uuid())
+  id              String        @id @default(uuid())
   images          String[]
   name            String        @unique
   slug            String        @unique
@@ -62,14 +63,15 @@ model Product {
   sizes           ProductSize[]
   isAvilable      Boolean       @default(true)
   reviews         Review[]
-  wishlistBy      User[] @relation("UserWishlist")
+  wishlistBy      User[]        @relation("UserWishlist")
+  cart            Cart[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
 
 model ProductSize {
-  id     String  @id @default(uuid())
-   productId     String
+  id            String  @id @default(uuid())
+  productId     String
   size          Size
   stockQuantity Int
   product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -95,4 +97,18 @@ model Review {
   updatedAt DateTime @default(now())
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [UserId], references: [id], onDelete: Cascade)
+}
+
+//cart schema 
+model Cart {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String
+  size      Size
+  quantity  Int      @default(1)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId, size])
 }

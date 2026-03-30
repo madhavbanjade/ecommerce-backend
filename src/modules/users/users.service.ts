@@ -124,7 +124,22 @@ export class UsersService {
         username: true,
         email: true,
         role: true,
-        wishlist: { select: { id: true, name: true } }
+        wishlist: { select: { id: true, name: true } },
+        cart: {
+  select: {
+    id: true,
+    quantity: true,
+    size: true,
+    product: {
+      select: {
+        name: true,
+        originalPrice: true,
+        dicountPrice: true,
+      }
+    }
+  }
+}
+        
       }
     })
     return SuccessResponseHandler.retrived('Users', users)
