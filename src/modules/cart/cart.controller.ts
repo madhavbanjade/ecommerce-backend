@@ -17,23 +17,29 @@ export class CartController {
     return this.cartService.addToCart(createCartDto, userId);
   }
 
-  // @Get()
-  // findAll() {
-  //   return this.cartService.findAll();
-  // }
+@UseGuards(ProtectLoginGuard)
+  @Get("")
+  getCartt(@Req() req: any) {
+    const userId  = req.user?.id
+    return this.cartService.getCart(userId, req);
+  }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.cartService.findOne(+id);
-  // }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateCartDto: UpdateCartDto) {
-  //   return this.cartService.update(+id, updateCartDto);
-  // }
+@UseGuards(ProtectLoginGuard)
+  @Patch(':id')
+  updateCartItem(@Param('id') id: string, @Body() updateCartDto: UpdateCartDto) {
+    return this.cartService.updateCartItem(id, updateCartDto);
+  }
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.cartService.remove(+id);
-  // }
+  @UseGuards(ProtectLoginGuard)
+  @Delete(':id')
+  deleteCartItem(@Param('id') id: string) {
+    return this.cartService.deleteCartItem(id);
+  }
+
+  @UseGuards(ProtectLoginGuard)
+  @Delete('')
+  deleteAllCartItem(@Param('id') id: string) {
+    return this.cartService.deleteAllCartItem(id);
+  }
 }
