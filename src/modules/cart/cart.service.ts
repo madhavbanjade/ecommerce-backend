@@ -74,106 +74,124 @@ export class CartService {
   }
 
   //get cart items
-  async getCart(userId: string, req: Request): Promise<ApiResponse<any>> {
-    return ErrorHandler.execute(async () => {
-      const cartItems = await this.prisma.cart.findMany({
-        where: {
-          userId,
-        },
-        include: {
-          product: {
-            select: {
-              images: true,
-              name: true,
-              originalPrice: true,
-              dicountPrice: true,
-              slug: true,
-            },
+async getCart(userId: string, req: Request): Promise<ApiResponse<any>> {
+  return ErrorHandler.execute(async () => {
+    const cartItems = await this.prisma.cart.findMany({
+      where: { userId },
+      include: {
+        product: {
+          select: {
+            images: true,
+            name: true,
+            originalPrice: true,
+            dicountPrice: true,
+            slug: true,
+            sizes: true, // optional if needed
           },
         },
-      });
+      },
+    });
 
-      const items = cartItems.map((item) => {
-        //if discount exist use it otherwise use original price
-        const price = item.product.dicountPrice ?? item.product.originalPrice;
+    const items = await Promise.all(
+      cartItems.map(async (item) => {
+        const price =
+          item.product.dicountPrice ?? item.product.originalPrice;
+
+        // ✅ fetch matching product size
+        const productSize = await this.prisma.productSize.findUnique({
+          where: {
+            productId_size: {
+              productId: item.productId,
+              size: item.size,
+            },
+          },
+          select: {
+            stockQuantity: true,
+          },
+        });
+
         return {
           id: item.id,
           size: item.size,
           quantity: item.quantity,
           name: item.product.name,
           slug: item.product.slug,
-          image: item.product.images,
+          image: item.product.images[0],
           unitPrice: price,
           totalPrice: price * item.quantity,
+
+          // ✅ ADD THIS
+          stockQuantity: productSize?.stockQuantity ?? 0,
         };
-      });
+      })
+    );
 
-      const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-      const totalPrice = items.reduce((sum, item) => sum + item.totalPrice, 0);
+    const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+    const totalPrice = items.reduce((sum, item) => sum + item.totalPrice, 0);
 
-      return SuccessResponseHandler.retrived('Cart', {
-        items,
-        totalItems,
-        totalPrice,
-      });
-    }, 'CartService.getCart');
-  }
+    return SuccessResponseHandler.retrived('Cart', {
+      items,
+      totalItems,
+      totalPrice,
+    });
+  }, 'CartService.getCart');
+}
 
   //update cart-items
-  async updateCartItem(
-    id: string,
-    updateCartDto: UpdateCartDto,
-  ): Promise<ApiResponse<any>> {
-    return ErrorHandler.execute(async () => {
-      const { quantity } = updateCartDto;
-      if (!quantity) throw new Error('Quantity is required');
+async updateCartItem(
+  id: string,
+  updateCartDto: UpdateCartDto,
+): Promise<ApiResponse<any>> {
+  return ErrorHandler.execute(async () => {
+    const { quantity } = updateCartDto;
 
-      const existing = await this.prisma.cart.findUnique({
+    if (quantity == null) {
+      throw new Error('Quantity is required');
+    }
+
+    const existing = await this.prisma.cart.findUnique({
+      where: { id },
+      include: {
+        product: {
+          include: {
+            sizes: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) throw ErrorHandler.notFound('Cart Item');
+
+    const productSize = await this.prisma.productSize.findUnique({
+      where: {
+        productId_size: {
+          productId: existing.productId,
+          size: existing.size,
+        },
+      },
+    });
+
+    if (!productSize) throw ErrorHandler.notFound('Product Size');
+
+    const diff = quantity - existing.quantity;
+
+  
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // ✅ Update cart
+      const cart = await tx.cart.update({
         where: { id },
-        include: {
-          product: {
-            include: {
-              sizes: true,
-            },
-          },
-        },
+        data: { quantity },
       });
 
-      if (!existing) throw ErrorHandler.notFound('Cart Item');
+    
 
-      //check stock for new quantity
-      const productSize = await this.prisma.productSize.findUnique({
-        where: {
-          productId_size: {
-            productId: existing.productId,
-            size: existing.size,
-          },
-        },
-      });
+      return cart;
+    });
 
-      if (!productSize) throw ErrorHandler.notFound('Product Size');
-
-      const diff = quantity - existing.quantity;
-
-      if (diff > 0 && productSize.stockQuantity < diff) {
-        throw new Error(`Only ${productSize.stockQuantity} items available`);
-      }
-
-      //update cart and stock in transcation
-      const [updated] = await this.prisma.$transaction([
-        this.prisma.cart.update({
-          where: { id },
-          data: { quantity },
-        }),
-        this.prisma.productSize.update({
-          where: { id: productSize.id },
-          data: { stockQuantity: { decrement: diff } },
-        }),
-      ]);
-
-      return SuccessResponseHandler.updated('Cart', updated);
-    }, 'CartService.updateCart');
-  }
+    return SuccessResponseHandler.updated('Cart', updated);
+  }, 'CartService.updateCart');
+}
 
 
   //delete one cart item

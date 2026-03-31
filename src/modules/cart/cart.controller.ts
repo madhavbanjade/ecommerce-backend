@@ -13,14 +13,16 @@ export class CartController {
   @Post()
   addToCart(@Body() createCartDto: CreateCartDto, @Req() req:any) {
     const userId = req.user?.id
-    console.log("user", userId)
+    // console.log("user", userId)
     return this.cartService.addToCart(createCartDto, userId);
   }
 
 @UseGuards(ProtectLoginGuard)
   @Get("")
-  getCartt(@Req() req: any) {
+  getCart(@Req() req: any) {
     const userId  = req.user?.id
+    console.log("user", userId)
+
     return this.cartService.getCart(userId, req);
   }
 
