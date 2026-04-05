@@ -89,7 +89,7 @@ async getCart(userId: string, req: Request): Promise<ApiResponse<any>> {
             sizes: true, // optional if needed
           },
         },
-      },
+      },  
     });
 
     const items = await Promise.all(

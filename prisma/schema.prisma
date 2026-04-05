@@ -33,6 +33,14 @@ enum Gender {
   Unisex
 }
 
+enum OrderStatus {
+  Pending
+  Confirmed
+  Shipped
+  Delivered
+  Cancelled
+}
+
 //users schema
 model User {
   id String @id @default(uuid())
@@ -44,6 +52,7 @@ model User {
   reviews   Review[]
   wishlist  Product[] @relation("UserWishlist")
   cart      Cart[]
+  order     Order[]
   createdAt DateTime  @default(now())
 }
 
@@ -111,4 +120,29 @@ model Cart {
   createdAt DateTime @default(now())
 
   @@unique([userId, productId, size])
+}
+
+//order item 
+model OrderItem {
+  id        String @id @default(uuid())
+  orderId   String
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  name      String
+  size      Size
+  unitPrice Int
+  quantity  Int
+  totalPrice Int
+  image     String
+}
+
+//order 
+model Order {
+  id     String @id @default(uuid())
+  userId String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status  OrderStatus
+  totalPrice Int
+  items   OrderItem[]
+  createdAt  DateTime @default(now())
 }
