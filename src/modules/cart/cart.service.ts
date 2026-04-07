@@ -8,10 +8,14 @@ import {
 } from '../../common/handlers/success-response.handler.js';
 import { ErrorHandler } from '../../common/handlers/error.handler.js';
 import { error } from 'console';
+import { ProductsService } from '../products/products.service.js';
+import { Request } from 'express';
 
 @Injectable()
 export class CartService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService,
+      private readonly productsService: ProductsService,
+  ) {}
 
 
   //product add to cart
@@ -116,7 +120,7 @@ async getCart(userId: string, req: Request): Promise<ApiResponse<any>> {
           quantity: item.quantity,
           name: item.product.name,
           slug: item.product.slug,
-          image: item.product.images[0],
+          image: this.productsService.transformProduct(item.product, req).images[0],
           unitPrice: price,
           totalPrice: price * item.quantity,
 
