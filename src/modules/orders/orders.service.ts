@@ -12,8 +12,7 @@ import { OrderStatus } from '@prisma/client';
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
-
-//create order
+  //create order
   async createOrder(userId: string): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
       //get users cart with items
@@ -87,9 +86,23 @@ export class OrdersService {
             data: { stockQuantity: { decrement: item.quantity } },
           });
         }
+        // ✅ Add this — recalculate isAvilable for each affected product
+        const affectedProductIds = [
+          ...new Set(cartItems.map((i) => i.productId)),
+        ];
+
+        for (const productId of affectedProductIds) {
+          const sizes = await tx.productSize.findMany({ where: { productId } });
+          const totalStock = sizes.reduce((sum, s) => sum + s.stockQuantity, 0);
+          await tx.product.update({
+            where: { id: productId },
+            data: { isAvilable: totalStock > 0 },
+          });
+        }
 
         //clear cart
         await tx.cart.deleteMany({ where: { userId } });
+
         return newOrder;
       });
 
@@ -97,7 +110,7 @@ export class OrdersService {
     }, 'OrderService.createOrder');
   }
 
-  //get all order list  
+  //get all order list
   async getUserOrders(userId: string): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
       const orders = await this.prisma.order.findMany({
@@ -111,7 +124,7 @@ export class OrdersService {
   }
 
   //get a order  only admin
-  async getOrderById( orderId: string, userId: string, isAdmin: boolean) {
+  async getOrderById(orderId: string, userId: string, isAdmin: boolean) {
     return ErrorHandler.execute(async () => {
       if (!userId) {
         throw ErrorHandler.unauthorized('User not authenticated');
@@ -134,63 +147,69 @@ export class OrdersService {
     }, 'OrderService.getOrderById');
   }
 
-
-
-
   async updateOrderStatus(orderId: string, updateOrderDto: UpdateOrderDto) {
     return ErrorHandler.execute(async () => {
-     const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-    });
-    if(!order) throw ErrorHandler.notFound("Order");
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+      });
+      if (!order) throw ErrorHandler.notFound('Order');
 
+      const updated = await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: updateOrderDto.status },
+      });
 
-    const updated = await this.prisma.order.update({
-      where: {id: orderId},
-      data: {status: updateOrderDto.status}
-    })
-
-      return SuccessResponseHandler.updated("Order", updated)
-    }, "OrderServive.updateOrderStatus")
+      return SuccessResponseHandler.updated('Order', updated);
+    }, 'OrderServive.updateOrderStatus');
   }
 
- async cancelOrder(orderId: string, userId: string) {
+  async cancelOrder(orderId: string, userId: string) {
     return ErrorHandler.execute(async () => {
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: { items: true },
+      });
 
-const order = await this.prisma.order.findUnique({
-  where: {id: orderId},
-  include:{items: true}
-})
+      if (!order) throw ErrorHandler.notFound('Order');
 
-   if (!order) throw ErrorHandler.notFound('Order');
-
-
-        if (['Shipped', 'Delivered'].includes(order.status)) {
-      throw ErrorHandler.serviceUnavailable(
-        'Cannot cancel an order that has already been shipped or delivered.',
-      );
-    }
-
-    //restock stock
-    await this.prisma.$transaction(async (tx) => {
-      for (const item of order.items) {
-        await tx.productSize.updateMany({
-          where:{
-            productId: item.productId,
-            size: item.size
-          },
-          data: {stockQuantity:{increment: item.quantity}}
-        });
+      if (['Shipped', 'Delivered'].includes(order.status)) {
+        throw ErrorHandler.serviceUnavailable(
+          'Cannot cancel an order that has already been shipped or delivered.',
+        );
       }
 
-      //mark order cancelled
-      await tx.order.update({
-        where: {id: orderId},
-        data:{status: OrderStatus.Cancelled},
-      })
-    } )
+      //restock stock
+      await this.prisma.$transaction(async (tx) => {
+        for (const item of order.items) {
+          await tx.productSize.updateMany({
+            where: {
+              productId: item.productId,
+              size: item.size,
+            },
+            data: { stockQuantity: { increment: item.quantity } },
+          });
+        }
+        // ✅ recalculate isAvilable after restoring stock
+        const affectedProductIds = [
+          ...new Set(order.items.map((i) => i.productId)),
+        ];
+        for (const productId of affectedProductIds) {
+          const sizes = await tx.productSize.findMany({ where: { productId } });
+          const totalStock = sizes.reduce((sum, s) => sum + s.stockQuantity, 0);
+          await tx.product.update({
+            where: { id: productId },
+            data: { isAvilable: totalStock > 0 },
+          });
+        }
 
-      return SuccessResponseHandler.deleted("Order", order)
-    }, "OrderService.cancelOrder")
+        //mark order cancelled
+        await tx.order.update({
+          where: { id: orderId },
+          data: { status: OrderStatus.Cancelled },
+        });
+      });
+
+      return SuccessResponseHandler.deleted('Order', order);
+    }, 'OrderService.cancelOrder');
   }
 }

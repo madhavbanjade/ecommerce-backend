@@ -50,7 +50,7 @@ export class ProductsController {
     return this.productsService.findOne(id, req);
   }
 
-  
+    
   
 
   // @UseGuards(ProtectLoginGuard, RoleProtectGuard)
