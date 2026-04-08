@@ -39,6 +39,8 @@ enum OrderStatus {
   Shipped
   Delivered
   Cancelled
+    Returned
+  ReturnRequested
 }
 
 //users schema
@@ -141,7 +143,7 @@ model Order {
   id     String @id @default(uuid())
   userId String
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status  OrderStatus
+  status  OrderStatus  @default(Pending)
   totalPrice Int
   items   OrderItem[]
   createdAt  DateTime @default(now())

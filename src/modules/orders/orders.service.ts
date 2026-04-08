@@ -7,10 +7,14 @@ import {
 } from '../../common/handlers/success-response.handler.js';
 import { ErrorHandler } from '../../common/handlers/error.handler.js';
 import { OrderStatus } from '@prisma/client';
+import { ProductsService } from '../products/products.service.js';
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly productService: ProductsService,
+  ) {}
 
   //create order
   async createOrder(userId: string): Promise<ApiResponse<any>> {
@@ -111,10 +115,24 @@ export class OrdersService {
   }
 
   //get all order list
-  async getUserOrders(userId: string): Promise<ApiResponse<any>> {
+  async getUserOrders(
+    userId: string,
+    tab: string = 'active',
+  ): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
+      let statusFilter: string[] = [];
+      if (tab === 'active') statusFilter = ['Pending', 'Confirmed', 'Shipped'];
+      else if (tab === 'past') statusFilter = ['Delivered', 'Cancelled'];
+      else if (tab === 'returns')
+        statusFilter = ['Returned', 'Returned Response'];
+      else statusFilter = ['Pending', 'Confirmed', 'Shipped'];
       const orders = await this.prisma.order.findMany({
-        where: { userId },
+        where: {
+          userId,
+          ...(statusFilter.length > 0 && {
+            status: { in: statusFilter as any },
+          }),
+        },
         include: { items: true },
         orderBy: { createdAt: 'desc' },
       });

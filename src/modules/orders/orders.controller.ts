@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, Query } from '@nestjs/common';
 import { OrdersService } from './orders.service.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
 import { UpdateOrderDto } from './dto/update-order.dto.js';
@@ -21,9 +21,9 @@ export class OrdersController {
 
   @UseGuards(ProtectLoginGuard)
   @Get()
-  getUserOrders(@Req() req: any) {
+  getUserOrders(@Query("tab") tab:string = "active", @Req() req: any) {
     const userId = req.user?.id
-    return this.ordersService.getUserOrders(userId);
+    return this.ordersService.getUserOrders(userId, tab);
   }
 
   @UseGuards(ProtectLoginGuard)
