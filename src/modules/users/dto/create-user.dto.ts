@@ -1,7 +1,11 @@
-import { Role } from '@prisma/client';
+import { Gender, Role } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
+  IsBoolean,
+  IsDate,
   IsEmail,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   Matches,
@@ -19,6 +23,28 @@ export class CreateUserDto {
       'userName can only contain letters, numbers, underscores, and hyphens',
   })
   username: string;
+
+  @IsNotEmpty({ message: 'Fullname is required' })
+  @IsString()
+  @MinLength(3, { message: 'Fullname must be at least 3 characters long' })
+  @MaxLength(30, { message: 'Fullname must not exceed 30 characters' })
+  fullname: string;
+
+  @IsString()
+  @MinLength(3, { message: ' Gender must be at least 3 characters long' })
+ 
+  gender: Gender;
+
+  @IsNotEmpty({ message: 'Contact is required' })
+  @IsString()
+  contact: string;
+
+  @IsNotEmpty({ message: 'DOB is required' })
+  @IsDate()
+   @Type(() => Date) 
+  dob: Date;
+
+
 
   @IsNotEmpty({ message: 'Email is required' })
   @IsEmail({}, { message: 'Please Provide a valid email address' })

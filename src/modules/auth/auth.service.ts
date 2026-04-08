@@ -23,7 +23,11 @@ export class AuthService {
         data: {
           email: googleUser.email,
           username: googleUser.username,
-          password: googleUser.password
+          password: googleUser.password,
+          fullname: googleUser.fullname,
+          gender: googleUser.gender,
+          contact: googleUser.contact,
+          dob: googleUser.dob,
         },
       });
     }

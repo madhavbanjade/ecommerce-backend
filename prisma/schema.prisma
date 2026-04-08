@@ -31,6 +31,7 @@ enum Gender {
   Male
   Female
   Unisex
+  Other
 }
 
 enum OrderStatus {
@@ -39,16 +40,19 @@ enum OrderStatus {
   Shipped
   Delivered
   Cancelled
-    Returned
+  Returned
   ReturnRequested
 }
 
 //users schema
 model User {
-  id String @id @default(uuid())
-
+  id        String    @id @default(uuid())
   email     String    @unique
   username  String    @unique
+  fullname  String
+  gender    Gender
+  contact   String
+  dob       DateTime
   password  String
   role      Role      @default(user)
   reviews   Review[]
@@ -126,25 +130,25 @@ model Cart {
 
 //order item 
 model OrderItem {
-  id        String @id @default(uuid())
-  orderId   String
-  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  name      String
-  size      Size
-  unitPrice Int
-  quantity  Int
+  id         String @id @default(uuid())
+  orderId    String
+  order      Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  name       String
+  size       Size
+  unitPrice  Int
+  quantity   Int
   totalPrice Int
-  image     String
+  image      String
 }
 
 //order 
 model Order {
-  id     String @id @default(uuid())
-  userId String
+  id         String      @id @default(uuid())
+  userId     String
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status  OrderStatus  @default(Pending)
+  status     OrderStatus @default(Pending)
   totalPrice Int
-  items   OrderItem[]
-  createdAt  DateTime @default(now())
+  items      OrderItem[]
+  createdAt  DateTime    @default(now())
 }

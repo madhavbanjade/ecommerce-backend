@@ -38,12 +38,12 @@ export class UsersService {
     @Body() createUserDto: CreateUserDto,
   ): Promise<ApiResponse<User>> {
     return ErrorHandler.execute(async () => {
-      const { username, email, role } = createUserDto;
+      const { username, email, role, fullname, gender, contact, dob } = createUserDto;
       const hashedPassword = await this.bcryptService.hashPassword(
         createUserDto.password,
       );
       const created = await this.prisma.user.create({
-        data: { username, email, password: hashedPassword, role },
+        data: { username, email, password: hashedPassword, role, fullname, gender, contact, dob },
       });
       // console.log('user', created);
       return SuccessResponseHandler.created('User', created);
@@ -122,7 +122,11 @@ export class UsersService {
       select: {
         id: true,
         username: true,
+        fullname: true,
         email: true,
+         contact: true,
+        gender: true,
+        dob: true,
         role: true,
         wishlist: { select: { id: true, name: true } },
         cart: {
@@ -154,7 +158,11 @@ export class UsersService {
       select: {
         id: true,
         username: true, 
+        fullname: true,
         email: true,
+         contact: true,
+        gender: true,
+        dob: true,
         role: true,
         wishlist: {
           select: {
