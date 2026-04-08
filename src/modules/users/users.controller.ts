@@ -17,7 +17,7 @@ import { UpdateUserDto } from './dto/update-user.dto.js';
 import { LoginUserDto } from './dto/login-user.dto.js';
 import { RoleProtectGuard } from '../../common/guards/roles.guard.js';
 import type { Request, Response } from 'express';
-import { setAuthCookies } from '../../common/cookies/auth-cookie.js';
+import { clearAuthCookies, setAuthCookies } from '../../common/cookies/auth-cookie.js';
 import { ProtectLoginGuard } from '../../common/guards/protect-login.guard.js';
 
 @Controller("users")
@@ -87,6 +87,19 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
+  @UseGuards(ProtectLoginGuard)
+  @Post('logout')
+  logout(@Req() req: Request, @Res() res: Response) {
+    clearAuthCookies(req, res); 
+
+    return res.status(200).json({
+      success: true,
+      message: 'Logged out successfully',
+    });
+  }
+
+
 
 
 }
+``
