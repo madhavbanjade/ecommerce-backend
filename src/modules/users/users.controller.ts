@@ -10,6 +10,7 @@ import {
   Req,
   Res,
   ValidationPipe,
+  UploadedFile,
 } from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -19,6 +20,7 @@ import { RoleProtectGuard } from '../../common/guards/roles.guard.js';
 import type { Request, Response } from 'express';
 import { clearAuthCookies, setAuthCookies } from '../../common/cookies/auth-cookie.js';
 import { ProtectLoginGuard } from '../../common/guards/protect-login.guard.js';
+import { UploadSingle } from '../../common/config/multer.config.js';
 
 @Controller("users")
 export class UsersController {
@@ -65,20 +67,26 @@ export class UsersController {
 
   @UseGuards(ProtectLoginGuard, RoleProtectGuard)
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Req() req: Request) {
+    return this.usersService.findAll( req);
   }
 
   @UseGuards(ProtectLoginGuard)
   @Get('me')
   getMe(@Req() req) {
-    return this.usersService.getMe(req.user.id);
+    return this.usersService.getMe(req.user.id, req);
   }
 
   @UseGuards(ProtectLoginGuard)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
+  @UploadSingle("image")
+  update(@Param('id') id: string, 
+  @Body() updateUserDto: UpdateUserDto,
+  @UploadedFile() files:Express.Multer.File,
+   @Req() req?: Request, 
+
+) {
+    return this.usersService.update(id, updateUserDto, files, req);
   }
 
   @UseGuards(ProtectLoginGuard, RoleProtectGuard)

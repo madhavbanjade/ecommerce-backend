@@ -14,6 +14,8 @@ import { Role, User } from '@prisma/client';
 import { BcryptService } from '../../common/services/bcrypt.service.js';
 import { ProductsService } from '../products/products.service.js';
 import type { Request } from 'express'
+import { ParamsDictionary } from 'express-serve-static-core';
+import { ParsedQs } from 'qs';
 
 interface JwtPayload {
   id: string;
@@ -32,6 +34,16 @@ export class UsersService {
     private readonly productService: ProductsService
     
   ) {}
+  private generateImageUrl(req: Request, path: string): string {
+  return `${req.protocol}://${req.get('host')}${path}`;
+}
+
+private transformUser(user: any, req: Request) {
+  return {
+    ...user,
+    image: user.image ? this.generateImageUrl(req, user.image) : null,
+  };
+}
 
 
   async create(
@@ -116,7 +128,7 @@ export class UsersService {
     }, 'UsersService.login');
   }
 
- async findAll(): Promise<ApiResponse<any>> {
+ async findAll(req: Request): Promise<ApiResponse<any>> {
   return ErrorHandler.execute(async () => {  // ✅ wrap in ErrorHandler
     const users = await this.prisma.user.findMany({
       select: {
@@ -127,6 +139,7 @@ export class UsersService {
          contact: true,
         gender: true,
         dob: true,
+        image: true,
         role: true,
         wishlist: { select: { id: true, name: true } },
         cart: {
@@ -145,57 +158,69 @@ export class UsersService {
 }
         
       }
+
+
     })
-    return SuccessResponseHandler.retrived('Users', users)
+
+      const transformed = users.map((user) => this.transformUser(user, req));
+
+    return SuccessResponseHandler.retrived('Users', transformed);
   }, 'UsersService.findAll')
 }
-
-  async getMe(userId: string): Promise<ApiResponse<any>> {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-      select: {
-        id: true,
-        username: true, 
-        fullname: true,
-        email: true,
-         contact: true,
-        gender: true,
-        dob: true,
-        role: true,
-        wishlist: {
-          select: {
-            id: true,
-            name: true,
-          },
+async getMe(userId: string, req: Request): Promise<ApiResponse<any>> {
+  const user: any = await this.prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      username: true,
+      fullname: true,
+      email: true,
+      contact: true,
+      gender: true,
+      dob: true,
+      image: true,
+      role: true,
+      wishlist: {
+        select: {
+          id: true,
+          name: true,
         },
       },
-    });
-    if (!user) {
-      throw ErrorHandler.notFound(`User with id ${userId}`);
-    }
-    return SuccessResponseHandler.retrived('User', user);
+    },
+  });
+
+  if (!user) {
+    throw ErrorHandler.notFound(`User with id ${userId}`);
   }
 
-  async update(
-    id: string,
-    updateUserDto: UpdateUserDto,
-  ): Promise<ApiResponse<{ id: string; email: string }>> {
-    try {
-      const updatedUser = await this.prisma.user.update({
-        where: { id },
-        data: updateUserDto,
-      });
-      return SuccessResponseHandler.updated('User', {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        ...updateUserDto,
-      });
-    } catch (error) {
-      ErrorHandler.handle(error, 'UsersService.update');
-    }
+  // 👇 single object, no .map()
+  const transformed = this.transformUser(user, req);
+
+  return SuccessResponseHandler.retrived('User', transformed);
+}
+ async update(
+id: string, updateUserDto: UpdateUserDto, files: Express.Multer.File, req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | undefined,
+): Promise<ApiResponse<any>> {
+  try {
+    const data: any = { ...updateUserDto };
+
+  const imagePath = files ? `/uploads/image/${files.filename}` : undefined;
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data,
+    });
+
+    return SuccessResponseHandler.updated('User', {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      image: imagePath,
+      ...updateUserDto,
+    });
+  } catch (error) {
+    ErrorHandler.handle(error, 'UsersService.update');
   }
+}
 
  
   //no response in postman....

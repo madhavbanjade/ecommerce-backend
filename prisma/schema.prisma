@@ -53,6 +53,7 @@ model User {
   gender    Gender
   contact   String
   dob       DateTime
+  image     String?
   password  String
   role      Role      @default(user)
   reviews   Review[]
