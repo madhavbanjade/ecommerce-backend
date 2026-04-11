@@ -291,7 +291,7 @@ export class ProductsService {
   //     });
 
   //     if (!existing) {
-  //       throw ErrorHandler.notFound(`Product with id ${id}`);
+  //       throw ErrorHandler.notFound(`Product with id ${id}`);P
   //     }
   //     const finalOriginalPrice = originalPrice ?? existing.originalPrice;
 

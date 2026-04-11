@@ -198,14 +198,17 @@ async getMe(userId: string, req: Request): Promise<ApiResponse<any>> {
 
   return SuccessResponseHandler.retrived('User', transformed);
 }
+
+//update
  async update(
 id: string, updateUserDto: UpdateUserDto, files: Express.Multer.File, req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>> | undefined,
 ): Promise<ApiResponse<any>> {
   try {
     const data: any = { ...updateUserDto };
 
-  const imagePath = files ? `/uploads/image/${files.filename}` : undefined;
-
+   if (files) {
+      data.image = `/uploads/image/${files.filename}`;
+    }
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data,
@@ -214,7 +217,7 @@ id: string, updateUserDto: UpdateUserDto, files: Express.Multer.File, req: Reque
     return SuccessResponseHandler.updated('User', {
       id: updatedUser.id,
       email: updatedUser.email,
-      image: imagePath,
+     image: updatedUser.image, 
       ...updateUserDto,
     });
   } catch (error) {
