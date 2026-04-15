@@ -120,17 +120,30 @@ export class OrdersService {
     tab: string = 'active',
   ): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
-      let statusFilter: string[] = [];
-      if (tab === 'active') statusFilter = ['Pending', 'Confirmed', 'Shipped'];
-      else if (tab === 'past') statusFilter = ['Delivered', 'Cancelled'];
+      let statusFilter: OrderStatus[] = [];
+
+      if (tab === 'active')
+        statusFilter = [
+          OrderStatus.Pending,
+          OrderStatus.Confirmed,
+          OrderStatus.Shipped,
+        ];
+      else if (tab === 'past')
+        statusFilter = [OrderStatus.Delivered, OrderStatus.Cancelled];
       else if (tab === 'returns')
-        statusFilter = ['Returned', 'Returned Response'];
-      else statusFilter = ['Pending', 'Confirmed', 'Shipped'];
+        statusFilter = [OrderStatus.Returned]; // ← remove 'Returned Response', use exact enum
+      else
+        statusFilter = [
+          OrderStatus.Pending,
+          OrderStatus.Confirmed,
+          OrderStatus.Shipped,
+        ];
+
       const orders = await this.prisma.order.findMany({
         where: {
           userId,
           ...(statusFilter.length > 0 && {
-            status: { in: statusFilter as any },
+            status: { in: statusFilter }, // ← no more `as any`
           }),
         },
         include: { items: true },
@@ -142,7 +155,7 @@ export class OrdersService {
   }
 
   //get a order  only admin
-  async getOrderById(orderId: string, userId: string, isAdmin: boolean) {
+  async getOrderById(orderId: string, userId: string) {
     return ErrorHandler.execute(async () => {
       if (!userId) {
         throw ErrorHandler.unauthorized('User not authenticated');
@@ -156,9 +169,6 @@ export class OrdersService {
 
       if (!order) {
         throw ErrorHandler.notFound('Order');
-      }
-      if (!isAdmin && order.userId !== userId) {
-        throw ErrorHandler.unauthorized('Admin');
       }
 
       return SuccessResponseHandler.retrived('order', order);

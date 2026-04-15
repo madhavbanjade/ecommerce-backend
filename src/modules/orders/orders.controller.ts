@@ -1,6 +1,5 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, Query } from '@nestjs/common';
 import { OrdersService } from './orders.service.js';
-import { CreateOrderDto } from './dto/create-order.dto.js';
 import { UpdateOrderDto } from './dto/update-order.dto.js';
 import { ProtectLoginGuard } from '../../common/guards/protect-login.guard.js';
 import { RoleProtectGuard } from '../../common/guards/roles.guard.js';
@@ -26,13 +25,14 @@ export class OrdersController {
     return this.ordersService.getUserOrders(userId, tab);
   }
 
-  @UseGuards(ProtectLoginGuard)
-  @Get(':id')
-  getOrderById(@Param('id') id: string, @Req() req:any) {
-      console.log("orderId from param:", id)
-        const isAdmin = req.user.role === 'admin';
-     return this.ordersService.getOrderById(id, req.user.id, isAdmin);
-  }
+    @UseGuards(ProtectLoginGuard)
+    @Get(':id')
+    getOrderById(@Param('id') id: string, @Req() req:any) {
+       console.log("orderId from param:", id);
+  console.log("req.user:", req.user); 
+      
+      return this.ordersService.getOrderById(id, req.user.id);
+    }
  
   @UseGuards(ProtectLoginGuard, RoleProtectGuard)
   @Patch(':id/status')
