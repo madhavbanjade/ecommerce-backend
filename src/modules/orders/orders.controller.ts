@@ -3,6 +3,7 @@ import { OrdersService } from './orders.service.js';
 import { UpdateOrderDto } from './dto/update-order.dto.js';
 import { ProtectLoginGuard } from '../../common/guards/protect-login.guard.js';
 import { RoleProtectGuard } from '../../common/guards/roles.guard.js';
+import { CreateOrderDto } from './dto/create-order.dto.js';
 
 
 @Controller('orders')
@@ -12,10 +13,10 @@ export class OrdersController {
 
   @UseGuards(ProtectLoginGuard)
   @Post()
-  createOrder(@Req() req: any) {
+  createOrder(@Req() req: any, @Body() dto: CreateOrderDto) {
     const userId = req.user?.id
     console.log("userId-from-order", userId)
-    return this.ordersService.createOrder(userId);
+    return this.ordersService.createOrder(userId, dto);
   }
 
   @UseGuards(ProtectLoginGuard)

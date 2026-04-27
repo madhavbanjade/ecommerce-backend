@@ -6,8 +6,9 @@ import {
   SuccessResponseHandler,
 } from '../../common/handlers/success-response.handler.js';
 import { ErrorHandler } from '../../common/handlers/error.handler.js';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, PaymentMethod } from '@prisma/client';
 import { ProductsService } from '../products/products.service.js';
+import { CreateOrderDto } from './dto/create-order.dto.js';
 
 @Injectable()
 export class OrdersService {
@@ -17,7 +18,7 @@ export class OrdersService {
   ) {}
 
   //create order
-  async createOrder(userId: string): Promise<ApiResponse<any>> {
+  async createOrder(userId: string, dto: CreateOrderDto): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
       //get users cart with items
       const cartItems = await this.prisma.cart.findMany({
@@ -53,12 +54,25 @@ export class OrdersService {
         return sum + price * item.quantity;
       }, 0);
 
-      //transaction create order, decrement stock , clear cart
 
+      //map payment mehtod string -> enum
+const methodMap: Record<string, PaymentMethod> = {
+  esewa:  PaymentMethod.Esewa,
+  khalti: PaymentMethod.Khalti,
+  cash:   PaymentMethod.Cash,
+}
+const paymentMethod = methodMap[dto.paymentMethod] ?? PaymentMethod.Cash
+
+      //transaction create order, decrement stock , clear cart
       const order = await this.prisma.$transaction(async (tx) => {
         const newOrder = await tx.order.create({
           data: {
             userId,
+            fullName: dto.fullName,
+             phone: dto.phone,
+             location: dto.location,
+              paymentMethod,
+             isPaid: false,
             status: 'Pending',
             totalPrice,
             items: {
@@ -162,7 +176,7 @@ export class OrdersService {
       }
 
       const order = await this.prisma.order.findUnique({
-        where: { id: orderId },
+        where: { id: orderId, userId },
         include: { items: true },
       });
       console.log('order', order);
@@ -175,21 +189,30 @@ export class OrdersService {
     }, 'OrderService.getOrderById');
   }
 
-  async updateOrderStatus(orderId: string, updateOrderDto: UpdateOrderDto) {
-    return ErrorHandler.execute(async () => {
-      const order = await this.prisma.order.findUnique({
-        where: { id: orderId },
-      });
-      if (!order) throw ErrorHandler.notFound('Order');
+async updateOrderStatus(orderId: string, updateOrderDto: UpdateOrderDto) {
+  return ErrorHandler.execute(async () => {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    })
+    if (!order) throw ErrorHandler.notFound('Order')
 
-      const updated = await this.prisma.order.update({
-        where: { id: orderId },
-        data: { status: updateOrderDto.status },
-      });
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        // update status if provided
+        ...(updateOrderDto.status && { status: updateOrderDto.status }),
 
-      return SuccessResponseHandler.updated('Order', updated);
-    }, 'OrderServive.updateOrderStatus');
-  }
+        // update isPaid if provided
+        ...(updateOrderDto.isPaid !== undefined && {
+          isPaid: updateOrderDto.isPaid,
+          paidAt: updateOrderDto.isPaid ? new Date() : null,
+        }),
+      },
+    })
+
+    return SuccessResponseHandler.updated('Order', updated)
+  }, 'OrderService.updateOrderStatus')
+}
 
   async cancelOrder(orderId: string, userId: string) {
     return ErrorHandler.execute(async () => {

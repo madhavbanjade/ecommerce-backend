@@ -44,6 +44,12 @@ enum OrderStatus {
   ReturnRequested
 }
 
+enum PaymentMethod {
+  Cash
+  Esewa
+  Khalti
+}
+
 //users schema
 model User {
   id        String    @id @default(uuid())
@@ -152,4 +158,11 @@ model Order {
   totalPrice Int
   items      OrderItem[]
   createdAt  DateTime    @default(now())
+
+  fullName      String  @default("")
+  phone         String  @default("")
+  location      String  @default("")
+  paymentMethod PaymentMethod @default(Cash)
+  isPaid        Boolean @default(false)
+  paidAt        DateTime?
 }
