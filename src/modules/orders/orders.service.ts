@@ -73,6 +73,7 @@ const paymentMethod = methodMap[dto.paymentMethod] ?? PaymentMethod.Cash
              location: dto.location,
               paymentMethod,
              isPaid: false,
+             paidAt: new Date(Date.now()),
             status: 'Pending',
             totalPrice,
             items: {
