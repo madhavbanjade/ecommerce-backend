@@ -19,13 +19,17 @@ export class OrdersController {
     return this.ordersService.createOrder(userId, dto);
   }
 
-  @UseGuards(ProtectLoginGuard)
-  @Get()
-  getUserOrders(@Query("tab") tab:string = "active", @Req() req: any) {
-    const userId = req.user?.id
-    return this.ordersService.getUserOrders(userId, tab);
-  }
-
+@UseGuards(ProtectLoginGuard)
+@Get()
+getUserOrders(
+  @Query('tab') tab: string = 'active',
+  @Query('page') page: string = '1',
+  @Query('limit') limit: string = '6',
+  @Req() req: any,
+) {
+  const userId = req.user?.id;
+  return this.ordersService.getUserOrders(userId, tab, page, limit);
+}
     @UseGuards(ProtectLoginGuard)
     @Get(':id')
     getOrderById(@Param('id') id: string, @Req() req:any) {

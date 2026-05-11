@@ -9,6 +9,7 @@ import { ErrorHandler } from '../../common/handlers/error.handler.js';
 import { OrderStatus, PaymentMethod } from '@prisma/client';
 import { ProductsService } from '../products/products.service.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
+import { Request } from 'express';
 
 @Injectable()
 export class OrdersService {
@@ -129,45 +130,60 @@ const paymentMethod = methodMap[dto.paymentMethod] ?? PaymentMethod.Cash
     }, 'OrderService.createOrder');
   }
 
-  //get all order list
-  async getUserOrders(
-    userId: string,
-    tab: string = 'active',
-  ): Promise<ApiResponse<any>> {
-    return ErrorHandler.execute(async () => {
-      let statusFilter: OrderStatus[] = [];
 
-      if (tab === 'active')
-        statusFilter = [
-          OrderStatus.Pending,
-          OrderStatus.Confirmed,
-          OrderStatus.Shipped,
-        ];
-      else if (tab === 'past')
-        statusFilter = [OrderStatus.Delivered, OrderStatus.Cancelled];
-      else if (tab === 'returns')
-        statusFilter = [OrderStatus.Returned]; // ← remove 'Returned Response', use exact enum
-      else
-        statusFilter = [
-          OrderStatus.Pending,
-          OrderStatus.Confirmed,
-          OrderStatus.Shipped,
-        ];
+async getUserOrders(
+  userId: string,
+  tab: string = 'active',
+  page: string = '1',
+  limit: string = '4',
+): Promise<ApiResponse<any>> {
+  return ErrorHandler.execute(async () => {
 
-      const orders = await this.prisma.order.findMany({
-        where: {
-          userId,
-          ...(statusFilter.length > 0 && {
-            status: { in: statusFilter }, // ← no more `as any`
-          }),
-        },
+    const take = parseInt(limit) || 4;
+    const currentPage = parseInt(page) || 1;
+    const skip = (currentPage - 1) * take;
+
+    let statusFilter: OrderStatus[] = [];
+    if (tab === 'active')
+      statusFilter = [OrderStatus.Pending, OrderStatus.Confirmed, OrderStatus.Shipped];
+    else if (tab === 'past')
+      statusFilter = [OrderStatus.Delivered, OrderStatus.Cancelled];
+    else if (tab === 'returns')
+      statusFilter = [OrderStatus.Returned];
+    else
+      statusFilter = [OrderStatus.Pending, OrderStatus.Confirmed, OrderStatus.Shipped];
+
+    const where = {
+      userId,
+      ...(statusFilter.length > 0 && { status: { in: statusFilter } }),
+    };
+
+    const [total, orders] = await Promise.all([
+      this.prisma.order.count({ where }),
+      this.prisma.order.findMany({
+        where,
         include: { items: true },
         orderBy: { createdAt: 'desc' },
-      });
+        skip,
+        take,
+      }),
+    ]);
 
-      return SuccessResponseHandler.retrived('orders', orders);
-    }, 'OrderService.getUserOrders');
-  }
+    return SuccessResponseHandler.retrived(
+      'orders',
+      orders,
+      {
+        total,
+        page: currentPage,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+        hasNext: currentPage < Math.ceil(total / take),
+        hasPrev: currentPage > 1,
+      },
+    );
+
+  }, 'OrderService.getUserOrders');
+}
 
   //get a order  only admin
   async getOrderById(orderId: string, userId: string) {
