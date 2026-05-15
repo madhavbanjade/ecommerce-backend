@@ -10,5 +10,6 @@ import { ProductsService } from '../products/products.service.js';
   
   controllers: [OrdersController],
   providers: [OrdersService, PrismaService, JwtService, ProductsService],
+  exports:[OrdersService]
 })
 export class OrdersModule {}

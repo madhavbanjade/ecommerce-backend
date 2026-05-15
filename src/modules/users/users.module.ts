@@ -5,9 +5,10 @@ import { PrismaService } from '../../prisma.service.js';
 import { BcryptService } from '../../common/services/bcrypt.service.js';
 import { JwtService } from '@nestjs/jwt';
 import { ProductsModule } from '../products/products.module.js';
+import { OrdersModule } from '../orders/orders.module.js';
 
 @Module({
-  imports:[ProductsModule],
+  imports:[ProductsModule, OrdersModule],
   controllers: [UsersController],
   //add all the services used in the module
   providers: [UsersService, PrismaService, BcryptService, JwtService],

@@ -16,6 +16,7 @@ import { ProductsService } from '../products/products.service.js';
 import type { Request } from 'express'
 import { ParamsDictionary } from 'express-serve-static-core';
 import { ParsedQs } from 'qs';
+import { OrdersService } from '../orders/orders.service.js';
 
 interface JwtPayload {
   id: string;
@@ -31,7 +32,8 @@ export class UsersService {
     private readonly bcryptService: BcryptService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly productService: ProductsService
+    private readonly productService: ProductsService,
+    private readonly orderService: OrdersService
     
   ) {}
   private generateImageUrl(req: Request, path: string): string {
@@ -167,36 +169,28 @@ private transformUser(user: any, req: Request) {
     return SuccessResponseHandler.retrived('Users', transformed);
   }, 'UsersService.findAll')
 }
+
 async getMe(userId: string, req: Request): Promise<ApiResponse<any>> {
-  const user: any = await this.prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      username: true,
-      fullname: true,
-      email: true,
-      contact: true,
-      gender: true,
-      dob: true,
-      image: true,
-      role: true,
-      wishlist: {
-        select: {
-          id: true,
-          name: true,
-        },
+  const [userWithRelations, orderStats] = await Promise.all([
+    this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        wishlist: { select: { id: true } },
       },
-    },
-  });
+    }),
+    this.orderService.getOrderStatsForUser(userId),
+  ]);
 
-  if (!user) {
-    throw ErrorHandler.notFound(`User with id ${userId}`);
-  }
+  if (!userWithRelations) throw ErrorHandler.notFound(`User with id ${userId}`);
 
-  // 👇 single object, no .map()
+  const { wishlist, ...user } = userWithRelations;
   const transformed = this.transformUser(user, req);
 
-  return SuccessResponseHandler.retrived('User', transformed);
+  return SuccessResponseHandler.retrived("User", {
+    ...transformed,
+    ...orderStats,
+    wishlistCount: wishlist?.length ?? 0,
+  });
 }
 
 //update

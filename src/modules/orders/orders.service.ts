@@ -280,4 +280,56 @@ async updateOrderStatus(orderId: string, updateOrderDto: UpdateOrderDto) {
       return SuccessResponseHandler.deleted('Order', order);
     }, 'OrderService.cancelOrder');
   }
+
+
+
+
+
+
+
+
+  async getOrderStatsForUser(userId: string) {
+  const orderGroups = await this.prisma.order.groupBy({
+    by: ["status"],
+    where: { userId },
+    _count: { status: true },
+  });
+
+  const countByStatus = Object.fromEntries(
+    orderGroups.map((g) => [g.status, g._count.status])
+  );
+
+  const orderCounts = {
+    active:  (countByStatus["Pending"]   ?? 0) +
+             (countByStatus["Confirmed"] ?? 0) +
+             (countByStatus["Shipped"]   ?? 0),
+    past:    (countByStatus["Delivered"] ?? 0) +
+             (countByStatus["Cancelled"] ?? 0),
+    returns:  countByStatus["Returned"]  ?? 0,
+  };
+
+  // last order + total spent
+  const orders = await this.prisma.order.findMany({
+    where: { userId },
+    select: { totalPrice: true, status: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+const totalSpent = orders
+  .filter(o => o.status === "Delivered")
+  .reduce((sum, o) => sum + parseFloat(o.totalPrice.toString()), 0);
+
+  const lastOrder = orders[0];
+
+  return {
+    orderCounts,
+    ordersCount:  orders.length,
+    totalSpent:   `Rs. ${totalSpent.toLocaleString()}`,
+    lastOrder:    lastOrder
+      ? new Date(lastOrder.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      : "—",
+  };
 }
+}
+
+
