@@ -4,12 +4,19 @@ import { UpdateOrderDto } from './dto/update-order.dto.js';
 import { ProtectLoginGuard } from '../../common/guards/protect-login.guard.js';
 import { RoleProtectGuard } from '../../common/guards/roles.guard.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
+import { CreateSelectedOrderDto } from './dto/create-selected-order.dto.js';
 
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
+
+  @UseGuards(ProtectLoginGuard)
+  @Post('selected')
+  createSelectedItemsOrder(@Req() req: any, @Body() dto: CreateSelectedOrderDto) {
+    return this.ordersService.createSelectedItemsOrder(req.user?.id, dto);
+  }
 
   @UseGuards(ProtectLoginGuard)
   @Post()

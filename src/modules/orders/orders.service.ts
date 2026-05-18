@@ -9,6 +9,7 @@ import { ErrorHandler } from '../../common/handlers/error.handler.js';
 import { OrderStatus, PaymentMethod } from '@prisma/client';
 import { ProductsService } from '../products/products.service.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
+import { CreateSelectedOrderDto } from './dto/create-selected-order.dto.js';
 import { Request } from 'express';
 
 @Injectable()
@@ -130,6 +131,104 @@ const paymentMethod = methodMap[dto.paymentMethod] ?? PaymentMethod.Cash
     }, 'OrderService.createOrder');
   }
 
+
+  // order only the selected cart items (1 or more checked in the cart UI)
+  async createSelectedItemsOrder(userId: string, dto: CreateSelectedOrderDto): Promise<ApiResponse<any>> {
+    return ErrorHandler.execute(async () => {
+      console.log('[createSelectedItemsOrder] userId:', userId, '| cartItemIds:', dto.cartItemIds);
+      const cartItems = await this.prisma.cart.findMany({
+        where: { userId, id: { in: dto.cartItemIds } },
+        include: { product: true },
+      });
+      console.log('[createSelectedItemsOrder] found cartItems:', cartItems.length);
+
+      if (cartItems.length === 0) {
+        throw ErrorHandler.invalidCredentials('No valid cart items found');
+      }
+
+      // validate stock for each selected item
+      for (const item of cartItems) {
+        const productSize = await this.prisma.productSize.findUnique({
+          where: {
+            productId_size: { productId: item.productId, size: item.size },
+          },
+        });
+        if (!productSize || productSize.stockQuantity < item.quantity) {
+          throw ErrorHandler.invalidCredentials(
+            `Insufficient stock for ${item.product.name} (${item.size})`,
+          );
+        }
+      }
+
+      const totalPrice = cartItems.reduce((sum, item) => {
+        const price = item.product.dicountPrice ?? item.product.originalPrice;
+        return sum + price * item.quantity;
+      }, 0);
+
+      const methodMap: Record<string, PaymentMethod> = {
+        esewa:  PaymentMethod.Esewa,
+        khalti: PaymentMethod.Khalti,
+        cash:   PaymentMethod.Cash,
+      };
+      const paymentMethod = methodMap[dto.paymentMethod] ?? PaymentMethod.Cash;
+
+      const order = await this.prisma.$transaction(async (tx) => {
+        const newOrder = await tx.order.create({
+          data: {
+            userId,
+            fullName: dto.fullName,
+            phone: dto.phone,
+            location: dto.location,
+            paymentMethod,
+            isPaid: false,
+            paidAt: new Date(),
+            status: 'Pending',
+            totalPrice,
+            items: {
+              create: cartItems.map((item) => ({
+                productId: item.productId,
+                name: item.product.name,
+                image: item.product.images?.[0] ?? '',
+                size: item.size,
+                unitPrice: item.product.dicountPrice ?? item.product.originalPrice,
+                quantity: item.quantity,
+                totalPrice: (item.product.dicountPrice ?? item.product.originalPrice) * item.quantity,
+              })),
+            },
+          },
+          include: { items: true },
+        });
+
+        // decrement stock for each selected item
+        for (const item of cartItems) {
+          await tx.productSize.update({
+            where: {
+              productId_size: { productId: item.productId, size: item.size },
+            },
+            data: { stockQuantity: { decrement: item.quantity } },
+          });
+        }
+
+        // recalculate isAvilable for affected products
+        const affectedProductIds = [...new Set(cartItems.map((i) => i.productId))];
+        for (const productId of affectedProductIds) {
+          const sizes = await tx.productSize.findMany({ where: { productId } });
+          const totalStock = sizes.reduce((sum, s) => sum + s.stockQuantity, 0);
+          await tx.product.update({
+            where: { id: productId },
+            data: { isAvilable: totalStock > 0 },
+          });
+        }
+
+        // remove only the selected cart items, not the whole cart
+        await tx.cart.deleteMany({ where: { id: { in: dto.cartItemIds }, userId } });
+
+        return newOrder;
+      });
+
+      return SuccessResponseHandler.created('order', order);
+    }, 'OrderService.createSelectedItemsOrder');
+  }
 
 async getUserOrders(
   userId: string,
