@@ -168,9 +168,12 @@ export class ProductsService {
 
       //sorting
       let orderBy: any = { createdAt: 'desc' };
-      if (sort === 'price-asc') orderBy = { originalPrice: 'asc' }; // ?sort=price-asc    → cheapest first
-      if (sort === 'price-desc') orderBy = { originalPrice: 'desc' }; // ?sort=price-desc   → most expensive first
-      if (sort === 'discount') orderBy = { discountPercent: 'desc' }; // ?sort=discount     → highest discount first
+      if (sort === 'price-asc')  orderBy = { originalPrice: 'asc' };
+      if (sort === 'price-desc') orderBy = { originalPrice: 'desc' };
+      if (sort === 'discount') {
+        orderBy = { discountPercent: 'desc' };
+        where.discountPercent = { gt: 0 }; // only show actually discounted products
+      }
 
       //pagination
       const take = parseInt(limit) || 12; //if limit is missing, invalid, or NaN, default to 12 items per page
@@ -357,11 +360,20 @@ export class ProductsService {
 
   async remove(id: string): Promise<ApiResponse<Product>> {
     return ErrorHandler.execute(async () => {
+      const existing = await this.prisma.product.findUnique({ where: { id } });
+      if (!existing) throw ErrorHandler.notFound(`Product with id ${id}`);
+
       const deleteProduct = await this.prisma.product.delete({
         where: { id },
-        include: {
-          sizes: true,
-        },
+        include: { sizes: true },
+      });
+      return SuccessResponseHandler.deleted('product', deleteProduct);
+    }, 'ProductsService.delete');
+  }
+  async removeAll(): Promise<ApiResponse<any>> {
+    return ErrorHandler.execute(async () => {
+      const deleteProduct = await this.prisma.product.deleteMany({
+       
       });
       return SuccessResponseHandler.deleted('product', deleteProduct);
     }, 'ProductsService.delete');

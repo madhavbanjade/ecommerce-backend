@@ -65,6 +65,12 @@ export class ProductsController {
   // }
 
   @UseGuards(ProtectLoginGuard, RoleProtectGuard)
+  @Delete('/all')
+  removeAll() {
+    return this.productsService.removeAll();
+  }
+
+  @UseGuards(ProtectLoginGuard, RoleProtectGuard)
   @Delete('/:id')
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);
