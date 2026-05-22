@@ -370,6 +370,8 @@ export class ProductsService {
       return SuccessResponseHandler.deleted('product', deleteProduct);
     }, 'ProductsService.delete');
   }
+
+  
   async removeAll(): Promise<ApiResponse<any>> {
     return ErrorHandler.execute(async () => {
       const deleteProduct = await this.prisma.product.deleteMany({

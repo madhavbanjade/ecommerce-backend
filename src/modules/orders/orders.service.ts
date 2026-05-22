@@ -284,6 +284,49 @@ async getUserOrders(
   }, 'OrderService.getUserOrders');
 }
 
+  async getAllOrders(
+    tab: string = 'all',
+    page: string = '1',
+    limit: string = '10',
+  ): Promise<ApiResponse<any>> {
+    return ErrorHandler.execute(async () => {
+      const take = parseInt(limit) || 10;
+      const currentPage = parseInt(page) || 1;
+      const skip = (currentPage - 1) * take;
+
+      const where: any = {};
+      if (tab === 'active')
+        where.status = { in: [OrderStatus.Pending, OrderStatus.Confirmed, OrderStatus.Shipped] };
+      else if (tab === 'past')
+        where.status = { in: [OrderStatus.Delivered, OrderStatus.Cancelled] };
+      else if (tab === 'returns')
+        where.status = { in: [OrderStatus.Returned] };
+
+      const [total, orders] = await Promise.all([
+        this.prisma.order.count({ where }),
+        this.prisma.order.findMany({
+          where,
+          include: {
+            items: true,
+            user: { select: { id: true, username: true, email: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take,
+        }),
+      ]);
+
+      return SuccessResponseHandler.retrived('orders', orders, {
+        total,
+        page: currentPage,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+        hasNext: currentPage < Math.ceil(total / take),
+        hasPrev: currentPage > 1,
+      });
+    }, 'OrderService.getAllOrders');
+  }
+
   //get a order  only admin
   async getOrderById(orderId: string, userId: string) {
     return ErrorHandler.execute(async () => {
@@ -329,6 +372,18 @@ async updateOrderStatus(orderId: string, updateOrderDto: UpdateOrderDto) {
     return SuccessResponseHandler.updated('Order', updated)
   }, 'OrderService.updateOrderStatus')
 }
+
+  async bulkDeleteOrders(orderIds: string[]): Promise<ApiResponse<any>> {
+    return ErrorHandler.execute(async () => {
+      if (!orderIds?.length) throw ErrorHandler.invalidCredentials('No order IDs provided');
+
+      const { count } = await this.prisma.order.deleteMany({
+        where: { id: { in: orderIds } },
+      });
+
+      return SuccessResponseHandler.deleted('orders', { deletedCount: count });
+    }, 'OrderService.bulkDeleteOrders');
+  }
 
   async cancelOrder(orderId: string, userId: string) {
     return ErrorHandler.execute(async () => {

@@ -37,6 +37,16 @@ getUserOrders(
   const userId = req.user?.id;
   return this.ordersService.getUserOrders(userId, tab, page, limit);
 }
+  @UseGuards(ProtectLoginGuard, RoleProtectGuard)
+  @Get('all')
+  getAllOrders(
+    @Query('tab') tab: string = 'all',
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10',
+  ) {
+    return this.ordersService.getAllOrders(tab, page, limit);
+  }
+
     @UseGuards(ProtectLoginGuard)
     @Get(':id')
     getOrderById(@Param('id') id: string, @Req() req:any) {
@@ -50,6 +60,12 @@ getUserOrders(
   @Patch(':id/status')
   updateOrderStatus(@Param('id') id: string,  @Body() updateOrderDto: UpdateOrderDto) {
     return this.ordersService.updateOrderStatus(id, updateOrderDto);
+  }
+
+  @UseGuards(ProtectLoginGuard, RoleProtectGuard)
+  @Delete('bulk')
+  bulkDeleteOrders(@Body('orderIds') orderIds: string[]) {
+    return this.ordersService.bulkDeleteOrders(orderIds);
   }
 
   @UseGuards(ProtectLoginGuard)
