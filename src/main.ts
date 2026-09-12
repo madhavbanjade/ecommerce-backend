@@ -8,7 +8,7 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  //upload files  uwguwu33 
+  //upload files 
   
   //changing while deplying
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
