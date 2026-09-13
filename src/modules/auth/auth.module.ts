@@ -5,7 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import type { StringValue } from 'ms';
 import { AuthService } from './auth.service.js';
-import { GoogleStrategy } from '../../common/strategies/google.strategy.js';
+
 import { PrismaService } from '../../prisma.service.js';
 import { AuthController } from './auth.controller.js';
 
@@ -24,7 +24,7 @@ import { AuthController } from './auth.controller.js';
       }),
     }),
   ],
-  providers: [AuthService, GoogleStrategy, PrismaService],
+  providers: [AuthService, PrismaService],
   controllers: [AuthController],
   exports: [AuthService],
 })
